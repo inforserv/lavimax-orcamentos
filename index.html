@@ -908,6 +908,19 @@
     }
   }
 
+  .items-table tbody tr.detail-row td {
+    padding: 3px 12px 3px 42px;
+    font-size: 9px;
+    color: var(--text-muted);
+    font-style: italic;
+    font-weight: 400;
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  .items-table tbody tr.detail-row td:nth-child(1) {
+    font-weight: 400;
+  }
+
   .toggle-included {
     display: inline-block;
     margin-left: 6px;
@@ -1477,7 +1490,10 @@
                 </tr>
               </tbody>
             </table>
-            <button class="add-row-btn no-print" onclick="addRow()">+ Adicionar item</button>
+            <div style="display:flex;gap:0" class="no-print">
+              <button class="add-row-btn" onclick="addRow()" style="border-radius:0 0 0 8px;border-right:none">+ Adicionar item</button>
+              <button class="add-row-btn" onclick="addDetailRow()" style="border-radius:0 0 8px 0;width:auto;padding:8px 14px;white-space:nowrap">+ Linha de detalhe</button>
+            </div>
           </div>
 
           <div class="totals-section">
@@ -1541,6 +1557,7 @@
           <div class="footer">
             <div class="footer-brand">LAVIMAX</div>
             <div class="footer-text">Rua da Fonte 29, Tornada &bull; 2500-315 Caldas da Rainha &bull; NIF: PT513 807 624 &bull; 964 727 712 &bull; lavimax.lda@gmail.com</div>
+            <div class="footer-text no-print" style="margin-top:6px;font-size:7px;opacity:0.5">v1.0.0 &bull; &copy; 2026 Inforshine &bull; Soluções Tecnológicas</div>
           </div>
         </div>
       </div>
@@ -2094,6 +2111,12 @@ function newQuote() {
 function collectQuoteData() {
   const items = [];
   document.querySelectorAll('#tableBody tr').forEach(row => {
+    const isDetail = row.classList.contains('detail-row');
+    if (isDetail) {
+      const text = row.querySelector('.item-detail')?.textContent || '';
+      items.push({ detail: true, text });
+      return;
+    }
     const isIncluded = row.classList.contains('included');
     const isToggleable = row.dataset.toggleable === 'true';
     const desc = row.querySelector('.item-desc')?.textContent || '';
@@ -2169,6 +2192,12 @@ function loadQuote(id) {
   // Rebuild items
   let html = '';
   (q.items || []).forEach((item, i) => {
+    if (item.detail) {
+      html += `<tr class="detail-row">
+        <td colspan="5"><span contenteditable="true" class="item-detail">${esc(item.text)}</span><span class="remove-btn" onclick="removeRow(this)" title="Remover">&times;</span></td>
+      </tr>`;
+      return;
+    }
     const itemIva = item.iva || '23';
     const toggleBtn = item.toggleable ? `<span class="toggle-included" onclick="toggleIncluded(this)" title="Alternar incluída/cobrada">${item.included ? 'cobrar' : 'incluir'}</span>` : '';
     if (item.included) {
@@ -2413,6 +2442,21 @@ function addRow() {
   addRowWithData('Novo item', '1', '0,00', '23');
 }
 
+function addDetailRow(text) {
+  const tbody = document.getElementById('tableBody');
+  const tr = document.createElement('tr');
+  tr.className = 'detail-row';
+  tr.innerHTML = `
+    <td colspan="5"><span contenteditable="true" class="item-detail">${esc(text || 'Detalhe / característica')}</span><span class="remove-btn" onclick="removeRow(this)" title="Remover">&times;</span></td>`;
+  // Insert before included rows
+  const included = tbody.querySelectorAll('.included');
+  if (included.length > 0) {
+    tbody.insertBefore(tr, included[0]);
+  } else {
+    tbody.appendChild(tr);
+  }
+}
+
 function addRowWithData(desc, qty, price, iva) {
   iva = iva || '23';
   const tbody = document.getElementById('tableBody');
@@ -2474,9 +2518,11 @@ function toggleIncluded(btn) {
 }
 
 function renumberRows() {
-  document.querySelectorAll('#tableBody tr').forEach((row, i) => {
+  let num = 1;
+  document.querySelectorAll('#tableBody tr').forEach((row) => {
+    if (row.classList.contains('detail-row')) return;
     const n = row.querySelector('.item-number');
-    if (n) n.textContent = i + 1;
+    if (n) n.textContent = num++;
   });
 }
 
