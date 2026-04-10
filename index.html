@@ -23,60 +23,175 @@
   .login-overlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: linear-gradient(135deg, #003d7a 0%, #0066cc 60%, #0088ee 100%);
+    background: #070b14;
     z-index: 9999;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-direction: column;
+    overflow: hidden;
+    font-family: 'Inter', -apple-system, sans-serif;
   }
 
   .login-overlay.hidden { display: none; }
 
-  .login-card {
-    background: white;
-    border-radius: 16px;
-    padding: 40px 36px;
-    text-align: center;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    max-width: 380px;
-    width: 90%;
+  /* Animated background */
+  .login-bg {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    overflow: hidden;
   }
 
-  .login-card img {
-    width: 140px;
-    margin-bottom: 16px;
-    border-radius: 8px;
+  .login-bg .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(100px);
+    animation: orbFloat 8s ease-in-out infinite;
+  }
+
+  .login-bg .orb-1 {
+    width: 500px; height: 500px;
+    background: rgba(0, 102, 204, 0.2);
+    top: -15%; right: -10%;
+    animation-delay: 0s;
+  }
+
+  .login-bg .orb-2 {
+    width: 400px; height: 400px;
+    background: rgba(0, 180, 255, 0.12);
+    bottom: -10%; left: -8%;
+    animation-delay: -3s;
+  }
+
+  .login-bg .orb-3 {
+    width: 250px; height: 250px;
+    background: rgba(34, 211, 238, 0.1);
+    top: 40%; left: 50%;
+    animation-delay: -5s;
+  }
+
+  @keyframes orbFloat {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(30px, -20px) scale(1.05); }
+    66% { transform: translate(-20px, 15px) scale(0.95); }
+  }
+
+  .login-bg .grid {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image:
+      linear-gradient(rgba(0, 120, 255, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 120, 255, 0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* Card */
+  .login-card {
+    position: relative;
+    z-index: 1;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 48px 44px;
+    text-align: center;
+    max-width: 400px;
+    width: 90%;
+    box-shadow:
+      0 0 0 1px rgba(0, 120, 255, 0.05),
+      0 30px 80px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .login-logo {
+    width: 150px;
+    height: 100px;
+    margin: 0 auto 24px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: white;
+    padding: 8px;
+    box-shadow: 0 8px 30px rgba(0, 102, 204, 0.15);
+  }
+
+  .login-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
   }
 
   .login-card h2 {
-    font-family: 'Inter', sans-serif;
-    font-size: 18px;
+    font-size: 22px;
     font-weight: 800;
-    color: #1e293b;
-    margin-bottom: 4px;
+    letter-spacing: 3px;
+    background: linear-gradient(135deg, #60a5fa, #38bdf8, #22d3ee);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 6px;
   }
 
-  .login-card .login-subtitle {
-    font-family: 'Inter', sans-serif;
+  .login-subtitle {
     font-size: 12px;
-    color: #64748b;
+    color: rgba(148, 163, 184, 0.8);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 32px;
+  }
+
+  .login-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
     margin-bottom: 24px;
   }
 
-  .login-card .login-error {
-    font-family: 'Inter', sans-serif;
+  .login-divider .line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(100, 116, 139, 0.3), transparent);
+  }
+
+  .login-divider span {
+    font-size: 9px;
+    color: rgba(100, 116, 139, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-weight: 600;
+  }
+
+  #googleSignInBtn {
+    display: flex;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .login-error {
     font-size: 12px;
-    color: #dc2626;
-    margin-top: 16px;
+    color: #f87171;
+    margin-top: 20px;
+    padding: 10px 16px;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.15);
+    border-radius: 8px;
     display: none;
   }
 
-  .login-card .login-error.show { display: block; }
+  .login-error.show { display: block; }
 
-  #g_id_onload, .g_id_signin {
-    display: flex;
-    justify-content: center;
+  .login-footer {
+    margin-top: 32px;
+    font-size: 10px;
+    color: rgba(100, 116, 139, 0.4);
+    letter-spacing: 0.5px;
+  }
+
+  .login-footer .lock-icon {
+    display: inline-block;
+    margin-right: 4px;
+    font-size: 11px;
   }
 </style>
 <style>
@@ -1153,12 +1268,28 @@
 
 <!-- LOGIN -->
 <div class="login-overlay" id="loginOverlay">
+  <div class="login-bg">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="grid"></div>
+  </div>
   <div class="login-card">
-    <img src="icon-512.png" alt="LAVIMAX">
-    <h2>LAVIMAX</h2>
-    <p class="login-subtitle">Sistema de Orçamentos — Acesso restrito</p>
+    <div class="login-logo">
+      <img src="icon-512.png" alt="LAVIMAX">
+    </div>
+    <h2>LAVIMAX, LDA.</h2>
+    <p class="login-subtitle">Sistema de Orçamentos</p>
+    <div class="login-divider">
+      <div class="line"></div>
+      <span>Acesso autorizado</span>
+      <div class="line"></div>
+    </div>
     <div id="googleSignInBtn"></div>
     <p class="login-error" id="loginError">Acesso negado. Este email não está autorizado.</p>
+    <div class="login-footer">
+      <span class="lock-icon">&#128274;</span> Acesso restrito a utilizadores autorizados
+    </div>
   </div>
 </div>
 
