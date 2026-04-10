@@ -1,11 +1,12 @@
-const CACHE_NAME = 'lavimax-orcamentos-v6';
+const CACHE_NAME = 'lavimax-orcamentos-v7';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
-  './apple-touch-icon.png'
+  './apple-touch-icon.png',
+  './favicon.ico'
 ];
 
 // Install: cache all assets
