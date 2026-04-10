@@ -14,6 +14,71 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="LAVIMAX">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+<!-- Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<style>
+  /* ===================== LOGIN OVERLAY ===================== */
+  .login-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(135deg, #003d7a 0%, #0066cc 60%, #0088ee 100%);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+  }
+
+  .login-overlay.hidden { display: none; }
+
+  .login-card {
+    background: white;
+    border-radius: 16px;
+    padding: 40px 36px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    max-width: 380px;
+    width: 90%;
+  }
+
+  .login-card img {
+    width: 140px;
+    margin-bottom: 16px;
+    border-radius: 8px;
+  }
+
+  .login-card h2 {
+    font-family: 'Inter', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    color: #1e293b;
+    margin-bottom: 4px;
+  }
+
+  .login-card .login-subtitle {
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 24px;
+  }
+
+  .login-card .login-error {
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    color: #dc2626;
+    margin-top: 16px;
+    display: none;
+  }
+
+  .login-card .login-error.show { display: block; }
+
+  #g_id_onload, .g_id_signin {
+    display: flex;
+    justify-content: center;
+  }
+</style>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
 
@@ -1086,9 +1151,20 @@
 </head>
 <body>
 
+<!-- LOGIN -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-card">
+    <img src="icon-512.png" alt="LAVIMAX">
+    <h2>LAVIMAX</h2>
+    <p class="login-subtitle">Sistema de Orçamentos — Acesso restrito</p>
+    <div id="googleSignInBtn"></div>
+    <p class="login-error" id="loginError">Acesso negado. Este email não está autorizado.</p>
+  </div>
+</div>
+
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-<div class="app-container">
+<div class="app-container" id="appContainer" style="display:none">
 
   <!-- ========== SIDEBAR ========== -->
   <div class="sidebar no-print">
@@ -1123,6 +1199,7 @@
         <button class="btn-sm" onclick="exportBackup()">&#128190; Exportar Backup</button>
         <button class="btn-sm" onclick="document.getElementById('importFile').click()">&#128194; Importar Backup</button>
         <input type="file" id="importFile" accept=".json" style="display:none" onchange="importBackup(event)">
+        <button class="btn-sm" onclick="doLogout()" style="margin-top:4px;color:#dc2626;border-color:#fecaca">&#10005; Terminar sessão</button>
       </div>
     </div>
   </div>
@@ -1445,6 +1522,74 @@
 <div class="toast" id="toast"></div>
 
 <script>
+// ===================== AUTHENTICATION =====================
+const ALLOWED_EMAILS = [
+  'lavimax.lda@gmail.com',
+  'paulo.sousa@inforshine.pt'
+];
+
+// Google Client ID - REPLACE with your own
+const GOOGLE_CLIENT_ID = 'REPLACE_WITH_YOUR_CLIENT_ID.apps.googleusercontent.com';
+
+function decodeJwt(token) {
+  const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+  return JSON.parse(atob(base64));
+}
+
+function handleGoogleSignIn(response) {
+  const payload = decodeJwt(response.credential);
+  const email = payload.email.toLowerCase();
+
+  if (ALLOWED_EMAILS.includes(email)) {
+    sessionStorage.setItem('lavimax_auth', email);
+    document.getElementById('loginOverlay').classList.add('hidden');
+    document.getElementById('appContainer').style.display = '';
+    document.getElementById('loginError').classList.remove('show');
+  } else {
+    document.getElementById('loginError').classList.add('show');
+    google.accounts.id.disableAutoSelect();
+  }
+}
+
+function checkAuth() {
+  const auth = sessionStorage.getItem('lavimax_auth');
+  if (auth && ALLOWED_EMAILS.includes(auth)) {
+    document.getElementById('loginOverlay').classList.add('hidden');
+    document.getElementById('appContainer').style.display = '';
+    return true;
+  }
+  return false;
+}
+
+function initGoogleSignIn() {
+  if (typeof google === 'undefined' || !google.accounts) {
+    setTimeout(initGoogleSignIn, 200);
+    return;
+  }
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: handleGoogleSignIn,
+    auto_select: true
+  });
+  google.accounts.id.renderButton(
+    document.getElementById('googleSignInBtn'),
+    { theme: 'outline', size: 'large', width: 280, text: 'signin_with', locale: 'pt-PT' }
+  );
+}
+
+function doLogout() {
+  sessionStorage.removeItem('lavimax_auth');
+  google.accounts.id.disableAutoSelect();
+  document.getElementById('loginOverlay').classList.remove('hidden');
+  document.getElementById('appContainer').style.display = 'none';
+  document.getElementById('loginError').classList.remove('show');
+}
+
+// Check session or show login
+if (!checkAuth()) {
+  initGoogleSignIn();
+}
+
 // ===================== DATABASE (localStorage) =====================
 const DB = {
   get(key, def) {
