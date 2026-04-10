@@ -848,7 +848,8 @@
 
   .items-table thead th:nth-child(2),
   .items-table thead th:nth-child(3),
-  .items-table thead th:nth-child(4) { text-align: center; }
+  .items-table thead th:nth-child(4),
+  .items-table thead th:nth-child(5) { text-align: center; }
 
   .items-table tbody td {
     padding: 7px 12px;
@@ -863,7 +864,8 @@
 
   .items-table tbody td:nth-child(2),
   .items-table tbody td:nth-child(3),
-  .items-table tbody td:nth-child(4) {
+  .items-table tbody td:nth-child(4),
+  .items-table tbody td:nth-child(5) {
     text-align: center;
     font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
@@ -872,9 +874,38 @@
   .items-table tbody tr.included td { color: var(--text-muted); font-style: italic; }
 
   .items-table tbody tr.included td:nth-child(3),
-  .items-table tbody tr.included td:nth-child(4) {
+  .items-table tbody tr.included td:nth-child(4),
+  .items-table tbody tr.included td:nth-child(5) {
     font-family: 'Inter', sans-serif;
     font-size: 9px;
+  }
+
+  .iva-select {
+    padding: 2px 4px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    background: white;
+    color: var(--text-dark);
+    cursor: pointer;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    text-align: center;
+    width: 55px;
+  }
+
+  .iva-select:focus { border-color: var(--blue-primary); }
+
+  @media print {
+    .iva-select {
+      border: none;
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      pointer-events: none;
+    }
   }
 
   .toggle-included {
@@ -1422,10 +1453,11 @@
             <table class="items-table" id="itemsTable">
               <thead>
                 <tr>
-                  <th style="width:50%">Descrição</th>
-                  <th style="width:10%">Qtd.</th>
-                  <th style="width:20%">Preço Unit.</th>
-                  <th style="width:20%">Total</th>
+                  <th style="width:42%">Descrição</th>
+                  <th style="width:8%">Qtd.</th>
+                  <th style="width:16%">Preço Unit.</th>
+                  <th style="width:10%">IVA</th>
+                  <th style="width:16%">Total</th>
                 </tr>
               </thead>
               <tbody id="tableBody">
@@ -1434,11 +1466,13 @@
                   <td>—</td>
                   <td>Incluída</td>
                   <td>—</td>
+                  <td>—</td>
                 </tr>
                 <tr class="included" data-toggleable="true">
                   <td><span class="item-number">2</span><span contenteditable="true" class="item-desc">Deslocações</span><span class="toggle-included" onclick="toggleIncluded(this)" title="Alternar incluída/cobrada">cobrar</span><span class="remove-btn" onclick="removeRow(this)" title="Remover">&times;</span></td>
                   <td>—</td>
                   <td>Incluídas</td>
+                  <td>—</td>
                   <td>—</td>
                 </tr>
               </tbody>
@@ -1452,9 +1486,10 @@
                 <span class="label">Subtotal (s/ IVA)</span>
                 <span class="value" id="subtotal">0,00 &euro;</span>
               </div>
+              <div id="ivaBreakdown"></div>
               <div class="total-row">
-                <span class="label">IVA (<span contenteditable="true" id="ivaRate">23</span>%)</span>
-                <span class="value" id="ivaValue">0,00 &euro;</span>
+                <span class="label">Total IVA</span>
+                <span class="value" id="ivaTotal">0,00 &euro;</span>
               </div>
               <div class="total-row grand-total">
                 <span class="label">TOTAL</span>
@@ -1612,7 +1647,16 @@
           </select>
         </div>
       </div>
-      <div class="form-group"><label>Categoria</label><input type="text" id="fServiceCategory" placeholder="Ex: Portões, Automatismos..."></div>
+      <div class="form-row">
+        <div class="form-group"><label>Categoria</label><input type="text" id="fServiceCategory" placeholder="Ex: Portões, Automatismos..."></div>
+        <div class="form-group"><label>Taxa IVA</label>
+          <select id="fServiceIva">
+            <option value="6">6% — Reduzida</option>
+            <option value="13">13% — Intermédia</option>
+            <option value="23" selected>23% — Normal</option>
+          </select>
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('serviceModal')">Cancelar</button>
@@ -1933,6 +1977,7 @@ function openServiceModal(id) {
     document.getElementById('fServicePrice').value = s.price;
     document.getElementById('fServiceUnit').value = s.unit || 'un';
     document.getElementById('fServiceCategory').value = s.category || '';
+    document.getElementById('fServiceIva').value = s.iva || '23';
   } else {
     document.getElementById('serviceModalTitle').textContent = 'Novo Serviço';
     el.value = '';
@@ -1940,6 +1985,7 @@ function openServiceModal(id) {
     document.getElementById('fServicePrice').value = '';
     document.getElementById('fServiceUnit').value = 'un';
     document.getElementById('fServiceCategory').value = '';
+    document.getElementById('fServiceIva').value = '23';
   }
   openModal('serviceModal');
 }
@@ -1952,6 +1998,7 @@ function saveService() {
     price: document.getElementById('fServicePrice').value.trim(),
     unit: document.getElementById('fServiceUnit').value,
     category: document.getElementById('fServiceCategory').value.trim(),
+    iva: document.getElementById('fServiceIva').value,
   };
 
   if (!data.desc) { alert('A descrição é obrigatória.'); return; }
@@ -1991,13 +2038,14 @@ function renderCatalogList() {
     return;
   }
 
-  let html = '<table class="data-table"><thead><tr><th>Descrição</th><th>Categoria</th><th>Unidade</th><th>Preço</th><th style="width:90px">Ações</th></tr></thead><tbody>';
+  let html = '<table class="data-table"><thead><tr><th>Descrição</th><th>Categoria</th><th>Unidade</th><th>Preço</th><th>IVA</th><th style="width:90px">Ações</th></tr></thead><tbody>';
   filtered.forEach(s => {
     html += `<tr>
       <td><strong>${esc(s.desc)}</strong></td>
       <td>${esc(s.category || '—')}</td>
       <td>${esc(s.unit || 'un')}</td>
       <td style="font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--blue-primary)">${esc(s.price)} &euro;</td>
+      <td>${esc(s.iva || '23')}%</td>
       <td><div class="actions-cell">
         <button class="btn-icon" onclick="openServiceModal('${s.id}')" title="Editar">&#9998;</button>
         <button class="btn-icon danger" onclick="deleteService('${s.id}')" title="Eliminar">&#128465;</button>
@@ -2028,17 +2076,16 @@ function newQuote() {
   document.getElementById('quoteLocation').textContent = 'A definir';
   document.getElementById('quoteDeadline').textContent = 'A combinar';
   document.getElementById('quotePayment').textContent = 'Após conclusão';
-  document.getElementById('ivaRate').textContent = '23';
 
   // Reset table
   document.getElementById('tableBody').innerHTML = `
     <tr class="included" data-toggleable="true">
       <td><span class="item-number">1</span><span contenteditable="true" class="item-desc">Mão de obra</span><span class="toggle-included" onclick="toggleIncluded(this)" title="Alternar incluída/cobrada">cobrar</span><span class="remove-btn" onclick="removeRow(this)" title="Remover">&times;</span></td>
-      <td>—</td><td>Incluída</td><td>—</td>
+      <td>—</td><td>Incluída</td><td>—</td><td>—</td>
     </tr>
     <tr class="included" data-toggleable="true">
       <td><span class="item-number">2</span><span contenteditable="true" class="item-desc">Deslocações</span><span class="toggle-included" onclick="toggleIncluded(this)" title="Alternar incluída/cobrada">cobrar</span><span class="remove-btn" onclick="removeRow(this)" title="Remover">&times;</span></td>
-      <td>—</td><td>Incluídas</td><td>—</td>
+      <td>—</td><td>Incluídas</td><td>—</td><td>—</td>
     </tr>`;
 
   recalculate();
@@ -2052,7 +2099,9 @@ function collectQuoteData() {
     const desc = row.querySelector('.item-desc')?.textContent || '';
     const qty = row.querySelector('.item-qty')?.textContent || '';
     const price = row.querySelector('.item-price')?.textContent || '';
-    items.push({ desc, qty, price, included: isIncluded, toggleable: isToggleable });
+    const ivaEl = row.querySelector('.iva-select');
+    const iva = ivaEl ? ivaEl.value : '23';
+    items.push({ desc, qty, price, iva, included: isIncluded, toggleable: isToggleable });
   });
 
   return {
@@ -2068,10 +2117,9 @@ function collectQuoteData() {
     location: document.getElementById('quoteLocation').textContent,
     deadline: document.getElementById('quoteDeadline').textContent,
     payment: document.getElementById('quotePayment').textContent,
-    ivaRate: document.getElementById('ivaRate').textContent,
     items: items,
     subtotal: document.getElementById('subtotal').textContent,
-    iva: document.getElementById('ivaValue').textContent,
+    ivaTotal: document.getElementById('ivaTotal').textContent,
     total: document.getElementById('grandTotal').textContent,
     conditions: Array.from(document.querySelectorAll('#conditionsCard .condition-text')).map(el => el.textContent),
     status: 'draft',
@@ -2117,23 +2165,24 @@ function loadQuote(id) {
   document.getElementById('quoteLocation').textContent = q.location || 'A definir';
   document.getElementById('quoteDeadline').textContent = q.deadline || 'A combinar';
   document.getElementById('quotePayment').textContent = q.payment || 'Após conclusão';
-  document.getElementById('ivaRate').textContent = q.ivaRate || '23';
 
   // Rebuild items
   let html = '';
   (q.items || []).forEach((item, i) => {
+    const itemIva = item.iva || '23';
     const toggleBtn = item.toggleable ? `<span class="toggle-included" onclick="toggleIncluded(this)" title="Alternar incluída/cobrada">${item.included ? 'cobrar' : 'incluir'}</span>` : '';
     if (item.included) {
       const inclText = item.desc.toLowerCase().includes('deslocaç') ? 'Incluídas' : 'Incluída';
       html += `<tr class="included"${item.toggleable ? ' data-toggleable="true"' : ''}>
         <td><span class="item-number">${i+1}</span><span contenteditable="true" class="item-desc">${esc(item.desc)}</span>${toggleBtn}<span class="remove-btn" onclick="removeRow(this)" title="Remover">&times;</span></td>
-        <td>—</td><td>${inclText}</td><td>—</td>
+        <td>—</td><td>${inclText}</td><td>—</td><td>—</td>
       </tr>`;
     } else {
       html += `<tr class="item-row"${item.toggleable ? ' data-toggleable="true"' : ''}>
         <td><span class="item-number">${i+1}</span><span contenteditable="true" class="item-desc">${esc(item.desc)}</span>${toggleBtn}<span class="remove-btn" onclick="removeRow(this)" title="Remover">&times;</span></td>
         <td><span contenteditable="true" class="item-qty">${esc(item.qty)}</span></td>
         <td><span contenteditable="true" class="item-price">${esc(item.price)}</span> &euro;</td>
+        <td><select class="iva-select" onchange="recalculate()"><option value="6"${itemIva==='6'?' selected':''}>6%</option><option value="13"${itemIva==='13'?' selected':''}>13%</option><option value="23"${itemIva==='23'?' selected':''}>23%</option></select></td>
         <td class="item-total">—</td>
       </tr>`;
     }
@@ -2302,7 +2351,7 @@ function renderCatalogPicker() {
 function pickService(id) {
   const s = getServices().find(x => x.id === id);
   if (!s) return;
-  addRowWithData(s.desc, '1', s.price);
+  addRowWithData(s.desc, '1', s.price, s.iva || '23');
   closeModal('catalogPickerModal');
   showToast('Adicionado: ' + s.desc);
 }
@@ -2318,32 +2367,54 @@ function formatNum(n) {
 
 function recalculate() {
   let subtotal = 0;
-  document.querySelectorAll('#tableBody .item-row').forEach((row, i) => {
+  const ivaTotals = {}; // { rate: baseAmount }
+
+  document.querySelectorAll('#tableBody .item-row').forEach((row) => {
     const qtyEl = row.querySelector('.item-qty');
     const priceEl = row.querySelector('.item-price');
     const totalEl = row.querySelector('.item-total');
+    const ivaEl = row.querySelector('.iva-select');
     if (qtyEl && priceEl && totalEl) {
       const qty = parseNum(qtyEl.textContent);
       const price = parseNum(priceEl.textContent);
       const total = qty * price;
       subtotal += total;
       totalEl.innerHTML = formatNum(total) + ' &euro;';
+
+      const rate = ivaEl ? parseInt(ivaEl.value) : 23;
+      ivaTotals[rate] = (ivaTotals[rate] || 0) + total;
     }
   });
 
   renumberRows();
-  const ivaRate = parseNum(document.getElementById('ivaRate').textContent);
-  const iva = subtotal * (ivaRate / 100);
+
+  // Build IVA breakdown
+  let ivaGrandTotal = 0;
+  const breakdownEl = document.getElementById('ivaBreakdown');
+  let bhtml = '';
+  const rates = Object.keys(ivaTotals).map(Number).sort((a, b) => a - b);
+  rates.forEach(rate => {
+    const ivaAmount = ivaTotals[rate] * (rate / 100);
+    ivaGrandTotal += ivaAmount;
+    const rateLabel = rate === 6 ? 'Reduzida' : rate === 13 ? 'Intermédia' : 'Normal';
+    bhtml += '<div class="total-row"><span class="label">IVA ' + rate + '% (' + rateLabel + ')</span><span class="value">' + formatNum(ivaAmount) + ' &euro;</span></div>';
+  });
+  if (bhtml === '') {
+    bhtml = '<div class="total-row"><span class="label">IVA 23% (Normal)</span><span class="value">0,00 &euro;</span></div>';
+  }
+  breakdownEl.innerHTML = bhtml;
+
   document.getElementById('subtotal').innerHTML = formatNum(subtotal) + ' &euro;';
-  document.getElementById('ivaValue').innerHTML = formatNum(iva) + ' &euro;';
-  document.getElementById('grandTotal').innerHTML = formatNum(subtotal + iva) + ' &euro;';
+  document.getElementById('ivaTotal').innerHTML = formatNum(ivaGrandTotal) + ' &euro;';
+  document.getElementById('grandTotal').innerHTML = formatNum(subtotal + ivaGrandTotal) + ' &euro;';
 }
 
 function addRow() {
-  addRowWithData('Novo item', '1', '0,00');
+  addRowWithData('Novo item', '1', '0,00', '23');
 }
 
-function addRowWithData(desc, qty, price) {
+function addRowWithData(desc, qty, price, iva) {
+  iva = iva || '23';
   const tbody = document.getElementById('tableBody');
   const tr = document.createElement('tr');
   tr.className = 'item-row';
@@ -2351,6 +2422,7 @@ function addRowWithData(desc, qty, price) {
     <td><span class="item-number">0</span><span contenteditable="true" class="item-desc">${esc(desc)}</span><span class="remove-btn" onclick="removeRow(this)" title="Remover">&times;</span></td>
     <td><span contenteditable="true" class="item-qty">${esc(qty)}</span></td>
     <td><span contenteditable="true" class="item-price">${esc(price)}</span> &euro;</td>
+    <td><select class="iva-select" onchange="recalculate()"><option value="6"${iva==='6'?' selected':''}>6%</option><option value="13"${iva==='13'?' selected':''}>13%</option><option value="23"${iva==='23'?' selected':''}>23%</option></select></td>
     <td class="item-total">0,00 &euro;</td>`;
 
   const included = tbody.querySelectorAll('.included');
@@ -2379,8 +2451,9 @@ function toggleIncluded(btn) {
     const cells = row.querySelectorAll('td');
     cells[1].innerHTML = '<span contenteditable="true" class="item-qty">1</span>';
     cells[2].innerHTML = '<span contenteditable="true" class="item-price">0,00</span> &euro;';
-    cells[3].innerHTML = '0,00 &euro;';
-    cells[3].className = 'item-total';
+    cells[3].innerHTML = '<select class="iva-select" onchange="recalculate()"><option value="6">6%</option><option value="13">13%</option><option value="23" selected>23%</option></select>';
+    cells[4].innerHTML = '0,00 &euro;';
+    cells[4].className = 'item-total';
     btn.textContent = 'incluir';
     btn.title = 'Alternar para incluída';
   } else {
@@ -2392,7 +2465,8 @@ function toggleIncluded(btn) {
     cells[1].innerHTML = '—';
     cells[2].innerHTML = desc.toLowerCase().includes('deslocaç') ? 'Incluídas' : 'Incluída';
     cells[3].innerHTML = '—';
-    cells[3].className = '';
+    cells[4].innerHTML = '—';
+    cells[4].className = '';
     btn.textContent = 'cobrar';
     btn.title = 'Alternar para cobrada';
   }
@@ -2484,8 +2558,7 @@ function esc(str) {
 // ===================== AUTO-RECALCULATE =====================
 document.addEventListener('input', function(e) {
   if (e.target.classList.contains('item-qty') ||
-      e.target.classList.contains('item-price') ||
-      e.target.id === 'ivaRate') {
+      e.target.classList.contains('item-price')) {
     recalculate();
   }
 });

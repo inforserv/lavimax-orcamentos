@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lavimax-orcamentos-v3';
+const CACHE_NAME = 'lavimax-orcamentos-v4';
 const ASSETS = [
   './',
   './index.html',
