@@ -1294,16 +1294,27 @@
     .sidebar, .top-bar, .quote-toolbar, .add-row-btn, .remove-btn, .toggle-included, .hamburger, .sidebar-overlay,
     .no-print { display: none !important; }
     .main-content { margin-left: 0; }
-    .quote-editor { padding: 0; }
-    .page { margin: 0; box-shadow: none; border-radius: 0; overflow: visible; }
-    /* Evitar quebras de página no meio de secções importantes */
+    .quote-editor { padding: 0; background: white; }
+    .page {
+      margin: 0;
+      box-shadow: none;
+      border-radius: 0;
+      overflow: visible;
+      width: 100%;
+      /* min-height:297mm forçava um bloco artificial de exatamente 297mm
+         que empurrava as assinaturas para a página 2 — removido em print */
+      min-height: 0;
+    }
+    /* Nunca partir secções a meio de uma página */
     .totals-section, .conditions-section, .iban-section,
     .signatures-section, .doc-disclaimer, .footer {
       page-break-inside: avoid;
       break-inside: avoid;
     }
-    /* Rodapé nunca inicia uma nova página sozinho */
-    .footer { page-break-before: avoid; break-before: avoid; }
+    .signatures-section, .doc-disclaimer, .footer {
+      page-break-before: avoid;
+      break-before: avoid;
+    }
   }
 
   /* Toast notifications */
