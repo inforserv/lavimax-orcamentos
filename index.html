@@ -18,6 +18,7 @@
 
 <!-- Google Identity Services -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
 
 <style>
@@ -2418,8 +2419,8 @@ function renderQuotesList() {
 }
 
 async function generateQuotePdf(filename) {
-  if (typeof html2pdf === 'undefined') {
-    showToast('Biblioteca de PDF ainda a carregar. Tente novamente.', 'error');
+  if (typeof html2pdf === 'undefined' || typeof window.html2canvas !== 'function') {
+    showToast('Bibliotecas de PDF ainda a carregar. Tente novamente em 2 segundos.', 'error');
     return;
   }
 
