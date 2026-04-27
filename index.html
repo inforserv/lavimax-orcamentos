@@ -2613,7 +2613,22 @@ function buildQuoteDocDefinition(q) {
   };
 
   // ----- Cartões de info (cliente / orçamento) -----
-  const cardLayout = {
+  // Cada card tem um título azul com cantos arredondados (canvas) seguido
+  // de um corpo com borda subtil (table com layout custom).
+  const CARD_WIDTH = 259; // (531 área conteúdo - 13 spacer) / 2
+
+  function cardTitleBlock(text) {
+    return {
+      stack: [
+        { canvas: [
+          { type: 'rect', x: 0, y: 0, w: CARD_WIDTH, h: 22, r: 5, color: PDF_COLORS.bluePrimary }
+        ]},
+        { text, alignment: 'center', color: PDF_COLORS.white, bold: true, fontSize: 9, characterSpacing: 1.5, margin: [0, -16, 0, 0] }
+      ]
+    };
+  }
+
+  const cardBodyLayout = {
     hLineWidth: (i, node) => (i === 0 || i === node.table.body.length) ? 0.5 : 0,
     vLineWidth: (i, node) => (i === 0 || i === node.table.widths.length) ? 0.5 : 0,
     hLineColor: () => PDF_COLORS.border,
@@ -2621,42 +2636,48 @@ function buildQuoteDocDefinition(q) {
   };
 
   const clientCard = {
-    table: {
-      widths: ['*'],
-      body: [
-        [{ text: 'DADOS DO CLIENTE', style: 'cardTitle', fillColor: PDF_COLORS.bluePrimary }],
-        [{
-          margin: [10, 8, 10, 8],
-          stack: [
-            { columns: [{ text: 'Nome', width: 60, style: 'rowLabel' }, { text: q.client.name || '—', style: 'rowValue' }] },
-            { columns: [{ text: 'Morada', width: 60, style: 'rowLabel' }, { text: q.client.address || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] },
-            { columns: [{ text: 'NIF', width: 60, style: 'rowLabel' }, { text: q.client.nif || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] },
-            { columns: [{ text: 'Contacto', width: 60, style: 'rowLabel' }, { text: q.client.contact || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] }
-          ]
-        }]
-      ]
-    },
-    layout: cardLayout
+    stack: [
+      cardTitleBlock('DADOS DO CLIENTE'),
+      {
+        margin: [0, 4, 0, 0],
+        table: {
+          widths: ['*'],
+          body: [[{
+            margin: [10, 8, 10, 8],
+            stack: [
+              { columns: [{ text: 'Nome', width: 60, style: 'rowLabel' }, { text: q.client.name || '—', style: 'rowValue' }] },
+              { columns: [{ text: 'Morada', width: 60, style: 'rowLabel' }, { text: q.client.address || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] },
+              { columns: [{ text: 'NIF', width: 60, style: 'rowLabel' }, { text: q.client.nif || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] },
+              { columns: [{ text: 'Contacto', width: 60, style: 'rowLabel' }, { text: q.client.contact || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] }
+            ]
+          }]]
+        },
+        layout: cardBodyLayout
+      }
+    ]
   };
 
   const infoCard = {
-    table: {
-      widths: ['*'],
-      body: [
-        [{ text: 'INFORMAÇÕES DO ORÇAMENTO', style: 'cardTitle', fillColor: PDF_COLORS.bluePrimary }],
-        [{
-          margin: [10, 8, 10, 8],
-          stack: [
-            { columns: [{ text: 'Data de emissão', width: 90, style: 'rowLabel' }, { text: q.date || '—', style: 'rowValue' }] },
-            { columns: [{ text: 'Válido até', width: 90, style: 'rowLabel' }, { text: q.validUntil || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] },
-            { columns: [{ text: 'Local da obra', width: 90, style: 'rowLabel' }, { text: q.location || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] },
-            { columns: [{ text: 'Prazo de execução', width: 90, style: 'rowLabel' }, { text: q.deadline || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] },
-            { columns: [{ text: 'Pagamento', width: 90, style: 'rowLabel' }, { text: q.payment || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] }
-          ]
-        }]
-      ]
-    },
-    layout: cardLayout
+    stack: [
+      cardTitleBlock('INFORMAÇÕES DO ORÇAMENTO'),
+      {
+        margin: [0, 4, 0, 0],
+        table: {
+          widths: ['*'],
+          body: [[{
+            margin: [10, 8, 10, 8],
+            stack: [
+              { columns: [{ text: 'Data de emissão', width: 90, style: 'rowLabel' }, { text: q.date || '—', style: 'rowValue' }] },
+              { columns: [{ text: 'Válido até', width: 90, style: 'rowLabel' }, { text: q.validUntil || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] },
+              { columns: [{ text: 'Local da obra', width: 90, style: 'rowLabel' }, { text: q.location || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] },
+              { columns: [{ text: 'Prazo de execução', width: 90, style: 'rowLabel' }, { text: q.deadline || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] },
+              { columns: [{ text: 'Pagamento', width: 90, style: 'rowLabel' }, { text: q.payment || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] }
+            ]
+          }]]
+        },
+        layout: cardBodyLayout
+      }
+    ]
   };
 
   // ----- Condições -----
@@ -2818,7 +2839,9 @@ function buildQuoteDocDefinition(q) {
       };
     },
 
-    // Rodapé em todas as páginas: linha azul + disclaimer + LAVIMAX + contactos + versão
+    // Rodapé em todas as páginas — replica fielmente o footer do preview HTML:
+    // linha azul, disclaimer com "não serve de fatura" a negrito, LAVIMAX em
+    // letras espaçadas, contactos e versão — tudo centrado.
     footer: function(currentPage, pageCount) {
       return {
         stack: [
@@ -2829,16 +2852,17 @@ function buildQuoteDocDefinition(q) {
           {
             margin: [32, 8, 32, 0],
             stack: [
-              { text: 'Este documento é um orçamento e não serve de fatura.', italics: true, fontSize: 7, color: PDF_COLORS.textDim },
-              { text: 'LAVIMAX, LDA.', bold: true, fontSize: 8, color: PDF_COLORS.textBody, characterSpacing: 0.5, margin: [0, 4, 0, 0] },
-              { text: 'Rua da Fonte 29, Tornada • 2500-315 Caldas da Rainha • NIF: PT513 807 624 • 964 727 712 • lavimax.lda@gmail.com', fontSize: 7, color: PDF_COLORS.textMuted, margin: [0, 1, 0, 0] },
               {
-                margin: [0, 4, 0, 0],
-                columns: [
-                  { text: 'v1.0.0 · © 2026 Inforshine · Soluções Tecnológicas', fontSize: 7, color: PDF_COLORS.textDim },
-                  { text: 'Página ' + currentPage + ' de ' + pageCount, fontSize: 7, color: PDF_COLORS.textDim, alignment: 'right', width: 90 }
+                alignment: 'center',
+                text: [
+                  { text: 'Este documento é um orçamento e ', italics: true, fontSize: 8, color: PDF_COLORS.textMuted },
+                  { text: 'não serve de fatura', italics: true, bold: true, fontSize: 8, color: PDF_COLORS.textBody },
+                  { text: '.', italics: true, fontSize: 8, color: PDF_COLORS.textMuted }
                 ]
-              }
+              },
+              { text: 'LAVIMAX', alignment: 'center', bold: true, fontSize: 10, characterSpacing: 4, color: PDF_COLORS.bluePrimary, margin: [0, 4, 0, 0] },
+              { text: 'Rua da Fonte 29, Tornada • 2500-315 Caldas da Rainha • NIF: PT513 807 624 • 964 727 712 • lavimax.lda@gmail.com', alignment: 'center', fontSize: 7, color: PDF_COLORS.textMuted, characterSpacing: 0.3, margin: [0, 2, 0, 0] },
+              { text: 'v1.0.0 • © 2026 Inforshine • Soluções Tecnológicas', alignment: 'center', fontSize: 7, color: PDF_COLORS.textDim, margin: [0, 4, 0, 0] }
             ]
           }
         ]
@@ -2846,10 +2870,14 @@ function buildQuoteDocDefinition(q) {
     },
 
     content: [
-      // Info-cards
+      // Info-cards (com respiro acima para não colar ao header azul)
       {
-        columns: [clientCard, { width: 12, text: '' }, infoCard],
-        margin: [0, 0, 0, 12]
+        columns: [
+          { width: CARD_WIDTH, ...clientCard },
+          { width: 13, text: '' },
+          { width: CARD_WIDTH, ...infoCard }
+        ],
+        margin: [0, 16, 0, 14]
       },
 
       // Título secção
