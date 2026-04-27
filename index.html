@@ -2572,7 +2572,7 @@ function buildQuoteDocDefinition(q) {
     }
   });
 
-  // ----- Bloco de totais -----
+  // ----- Bloco de totais (sem a linha grande TOTAL — essa fica arredondada à parte) -----
   const totalRows = [];
   totalRows.push([
     { text: 'Subtotal (s/ IVA)', style: 'totLabel' },
@@ -2594,29 +2594,49 @@ function buildQuoteDocDefinition(q) {
     { text: 'Total IVA', style: 'totLabel' },
     { text: fmtMoney(totals.ivaTotal), style: 'totValue' }
   ]);
-  totalRows.push([
-    { text: 'TOTAL', style: 'grandTotLabel', fillColor: PDF_COLORS.bluePrimary },
-    { text: fmtMoney(totals.grandTotal), style: 'grandTotValue', fillColor: PDF_COLORS.bluePrimary }
-  ]);
+
+  // Linha TOTAL grande com fundo azul arredondado (canvas + overlay)
+  const grandTotalCard = {
+    margin: [0, 4, 0, 0],
+    stack: [
+      { canvas: [
+        { type: 'rect', x: 0, y: 0, w: 240, h: 32, r: 8, color: PDF_COLORS.bluePrimary }
+      ]},
+      {
+        margin: [14, -25, 14, 0],
+        columns: [
+          { text: 'TOTAL', color: PDF_COLORS.white, bold: true, fontSize: 11, characterSpacing: 2, alignment: 'left', margin: [0, 4, 0, 0] },
+          { text: fmtMoney(totals.grandTotal), color: PDF_COLORS.white, bold: true, fontSize: 13, alignment: 'right' }
+        ]
+      }
+    ]
+  };
 
   // ----- Cartões de info (cliente / orçamento) -----
+  const cardLayout = {
+    hLineWidth: (i, node) => (i === 0 || i === node.table.body.length) ? 0.5 : 0,
+    vLineWidth: (i, node) => (i === 0 || i === node.table.widths.length) ? 0.5 : 0,
+    hLineColor: () => PDF_COLORS.border,
+    vLineColor: () => PDF_COLORS.border
+  };
+
   const clientCard = {
     table: {
       widths: ['*'],
       body: [
         [{ text: 'DADOS DO CLIENTE', style: 'cardTitle', fillColor: PDF_COLORS.bluePrimary }],
         [{
-          margin: [8, 6, 8, 6],
+          margin: [10, 8, 10, 8],
           stack: [
             { columns: [{ text: 'Nome', width: 60, style: 'rowLabel' }, { text: q.client.name || '—', style: 'rowValue' }] },
-            { columns: [{ text: 'Morada', width: 60, style: 'rowLabel' }, { text: q.client.address || '—', style: 'rowValue' }], margin: [0, 3, 0, 0] },
-            { columns: [{ text: 'NIF', width: 60, style: 'rowLabel' }, { text: q.client.nif || '—', style: 'rowValue' }], margin: [0, 3, 0, 0] },
-            { columns: [{ text: 'Contacto', width: 60, style: 'rowLabel' }, { text: q.client.contact || '—', style: 'rowValue' }], margin: [0, 3, 0, 0] }
+            { columns: [{ text: 'Morada', width: 60, style: 'rowLabel' }, { text: q.client.address || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] },
+            { columns: [{ text: 'NIF', width: 60, style: 'rowLabel' }, { text: q.client.nif || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] },
+            { columns: [{ text: 'Contacto', width: 60, style: 'rowLabel' }, { text: q.client.contact || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] }
           ]
         }]
       ]
     },
-    layout: 'noBorders'
+    layout: cardLayout
   };
 
   const infoCard = {
@@ -2625,18 +2645,18 @@ function buildQuoteDocDefinition(q) {
       body: [
         [{ text: 'INFORMAÇÕES DO ORÇAMENTO', style: 'cardTitle', fillColor: PDF_COLORS.bluePrimary }],
         [{
-          margin: [8, 6, 8, 6],
+          margin: [10, 8, 10, 8],
           stack: [
             { columns: [{ text: 'Data de emissão', width: 90, style: 'rowLabel' }, { text: q.date || '—', style: 'rowValue' }] },
-            { columns: [{ text: 'Válido até', width: 90, style: 'rowLabel' }, { text: q.validUntil || '—', style: 'rowValue' }], margin: [0, 3, 0, 0] },
-            { columns: [{ text: 'Local da obra', width: 90, style: 'rowLabel' }, { text: q.location || '—', style: 'rowValue' }], margin: [0, 3, 0, 0] },
-            { columns: [{ text: 'Prazo de execução', width: 90, style: 'rowLabel' }, { text: q.deadline || '—', style: 'rowValue' }], margin: [0, 3, 0, 0] },
-            { columns: [{ text: 'Pagamento', width: 90, style: 'rowLabel' }, { text: q.payment || '—', style: 'rowValue' }], margin: [0, 3, 0, 0] }
+            { columns: [{ text: 'Válido até', width: 90, style: 'rowLabel' }, { text: q.validUntil || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] },
+            { columns: [{ text: 'Local da obra', width: 90, style: 'rowLabel' }, { text: q.location || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] },
+            { columns: [{ text: 'Prazo de execução', width: 90, style: 'rowLabel' }, { text: q.deadline || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] },
+            { columns: [{ text: 'Pagamento', width: 90, style: 'rowLabel' }, { text: q.payment || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] }
           ]
         }]
       ]
     },
-    layout: 'noBorders'
+    layout: cardLayout
   };
 
   // ----- Condições -----
@@ -2675,38 +2695,35 @@ function buildQuoteDocDefinition(q) {
     unbreakable: true,
     margin: [0, 24, 0, 0],
     stack: [
-      // IBAN
+      // IBAN — fundo azul claro com cantos arredondados (canvas + overlay)
       {
-        table: {
-          widths: ['*'],
-          body: [[{
-            margin: [12, 10, 12, 10],
+        stack: [
+          { canvas: [
+            { type: 'rect', x: 0, y: 0, w: 531, h: 56, r: 8, color: PDF_COLORS.blueLight }
+          ]},
+          {
+            margin: [14, -46, 14, 0],
             columns: [
               {
-                width: 28,
+                width: 32,
                 stack: [
                   { canvas: [
-                    { type: 'rect', x: 0, y: 0, w: 24, h: 24, r: 4, color: PDF_COLORS.bluePrimary }
+                    { type: 'rect', x: 0, y: 0, w: 28, h: 28, r: 5, color: PDF_COLORS.bluePrimary }
                   ]},
-                  { text: 'IBAN', color: PDF_COLORS.white, fontSize: 7, bold: true, alignment: 'center', characterSpacing: 1, margin: [0, -16, 0, 0] }
+                  { text: 'IBAN', color: PDF_COLORS.white, fontSize: 7, bold: true, alignment: 'center', characterSpacing: 1, margin: [0, -19, 0, 0] }
                 ]
               },
               {
                 width: '*',
-                margin: [4, 2, 0, 0],
+                margin: [6, 2, 0, 0],
                 stack: [
                   { text: 'IBAN PARA TRANSFERÊNCIA (CGD)', fontSize: 8, color: PDF_COLORS.textDim, characterSpacing: 1, bold: true },
-                  { text: 'PT50 0035 0183 0006 9933 0307 6', fontSize: 12, bold: true, color: PDF_COLORS.bluePrimary, margin: [0, 2, 0, 0] }
+                  { text: 'PT50 0035 0183 0006 9933 0307 6', fontSize: 12, bold: true, color: PDF_COLORS.bluePrimary, margin: [0, 3, 0, 0] }
                 ]
               }
             ]
-          }]]
-        },
-        layout: {
-          fillColor: () => PDF_COLORS.blueLight,
-          hLineWidth: () => 0,
-          vLineWidth: () => 0
-        }
+          }
+        ]
       },
       // Assinaturas — margem superior generosa = espaço em branco
       // para o cliente assinar fisicamente com caneta acima da linha
@@ -2737,7 +2754,7 @@ function buildQuoteDocDefinition(q) {
   // ----- Documento -----
   return {
     pageSize: 'A4',
-    pageMargins: [32, 96, 32, 40],
+    pageMargins: [32, 78, 32, 78],
     info: {
       title: 'Orçamento ' + q.number,
       author: 'LAVIMAX, LDA.',
@@ -2763,78 +2780,67 @@ function buildQuoteDocDefinition(q) {
       grandTotValue: { color: PDF_COLORS.white, fontSize: 12, bold: true, alignment: 'right', margin: [0, 6, 8, 6] }
     },
 
-    // Cabeçalho azul em todas as páginas
-    header: function(currentPage) {
-      const headerStack = [
-        // Banda azul
-        {
-          table: {
-            widths: ['*'],
-            body: [[{
-              fillColor: PDF_COLORS.bluePrimary,
-              border: [false, false, false, false],
-              margin: [32, 14, 32, 12],
-              columns: [
-                {
-                  width: 'auto',
-                  stack: logoDataUrl ? [{ image: logoDataUrl, width: 46, height: 46, margin: [0, 0, 12, 0] }] : []
-                },
-                {
-                  width: '*',
-                  stack: [
-                    { text: 'LAVIMAX, LDA.', color: PDF_COLORS.white, fontSize: 18, bold: true, characterSpacing: 1 },
-                    { text: 'ASSISTÊNCIA TÉCNICA • MANUTENÇÃO INDUSTRIAL • AUTOMATISMOS', color: '#bbd6f0', fontSize: 7, characterSpacing: 0.5, margin: [0, 2, 0, 0] },
-                    { text: 'ELETRODOMÉSTICOS GERAL • AQUECIMENTO CENTRAL • A/C', color: '#bbd6f0', fontSize: 7, characterSpacing: 0.5 }
-                  ],
-                  margin: [0, 2, 0, 0]
-                },
-                {
-                  width: 'auto',
-                  alignment: 'right',
-                  stack: [
-                    { text: 'ORÇAMENTO', color: PDF_COLORS.white, fontSize: 18, bold: true, characterSpacing: 2 },
-                    { text: 'N.º ' + q.number, color: '#bbd6f0', fontSize: 9, characterSpacing: 1, margin: [0, 2, 0, 0] }
-                  ]
-                }
-              ]
-            }]]
-          },
-          layout: 'noBorders'
+    // Cabeçalho azul em todas as páginas (banda compacta — contactos passam para o footer)
+    header: function() {
+      return {
+        table: {
+          widths: ['*'],
+          body: [[{
+            fillColor: PDF_COLORS.bluePrimary,
+            border: [false, false, false, false],
+            margin: [32, 14, 32, 14],
+            columns: [
+              {
+                width: 'auto',
+                stack: logoDataUrl ? [{ image: logoDataUrl, width: 44, height: 44, margin: [0, 0, 12, 0] }] : []
+              },
+              {
+                width: '*',
+                stack: [
+                  { text: 'LAVIMAX, LDA.', color: PDF_COLORS.white, fontSize: 18, bold: true, characterSpacing: 1 },
+                  { text: 'ASSISTÊNCIA TÉCNICA • MANUTENÇÃO INDUSTRIAL • AUTOMATISMOS', color: '#bbd6f0', fontSize: 7, characterSpacing: 0.5, margin: [0, 2, 0, 0] },
+                  { text: 'ELETRODOMÉSTICOS GERAL • AQUECIMENTO CENTRAL • A/C', color: '#bbd6f0', fontSize: 7, characterSpacing: 0.5 }
+                ],
+                margin: [0, 2, 0, 0]
+              },
+              {
+                width: 'auto',
+                alignment: 'right',
+                stack: [
+                  { text: 'ORÇAMENTO', color: PDF_COLORS.white, fontSize: 18, bold: true, characterSpacing: 2 },
+                  { text: 'N.º ' + q.number, color: '#bbd6f0', fontSize: 9, characterSpacing: 1, margin: [0, 2, 0, 0] }
+                ]
+              }
+            ]
+          }]]
         },
-        // Barra de contactos
-        {
-          table: {
-            widths: ['*'],
-            body: [[{
-              fillColor: PDF_COLORS.cardBg,
-              border: [false, false, false, true],
-              margin: [32, 4, 32, 4],
-              columns: [
-                { text: 'Rua da Fonte 29, Tornada — 2500-315 Caldas da Rainha', fontSize: 7, color: PDF_COLORS.textMuted, width: '*' },
-                { text: 'Tel. 964 727 712', fontSize: 7, color: PDF_COLORS.textMuted, width: 'auto', margin: [10, 0, 0, 0] },
-                { text: 'lavimax.lda@gmail.com', fontSize: 7, color: PDF_COLORS.textMuted, width: 'auto', margin: [10, 0, 0, 0] },
-                { text: 'NIF PT513 807 624', fontSize: 7, color: PDF_COLORS.textMuted, width: 'auto', margin: [10, 0, 0, 0] }
-              ]
-            }]]
-          },
-          layout: {
-            hLineWidth: (i) => (i === 1 ? 0.5 : 0),
-            vLineWidth: () => 0,
-            hLineColor: () => PDF_COLORS.border
-          }
-        }
-      ];
-      return headerStack;
+        layout: 'noBorders'
+      };
     },
 
-    // Rodapé em todas as páginas
+    // Rodapé em todas as páginas: linha azul + disclaimer + LAVIMAX + contactos + versão
     footer: function(currentPage, pageCount) {
       return {
-        margin: [32, 8, 32, 0],
-        columns: [
-          { text: 'Este documento é um orçamento e não serve de fatura.', fontSize: 7, color: PDF_COLORS.textDim, italics: true },
-          { text: 'v1.0.0 · © 2026 Inforshine · Soluções Tecnológicas', fontSize: 7, color: PDF_COLORS.textDim, alignment: 'center' },
-          { text: 'Página ' + currentPage + ' de ' + pageCount, fontSize: 7, color: PDF_COLORS.textDim, alignment: 'right', width: 90 }
+        stack: [
+          // Linha azul full-width edge-to-edge
+          { canvas: [
+            { type: 'rect', x: 0, y: 0, w: 595, h: 1.5, color: PDF_COLORS.bluePrimary }
+          ]},
+          {
+            margin: [32, 8, 32, 0],
+            stack: [
+              { text: 'Este documento é um orçamento e não serve de fatura.', italics: true, fontSize: 7, color: PDF_COLORS.textDim },
+              { text: 'LAVIMAX, LDA.', bold: true, fontSize: 8, color: PDF_COLORS.textBody, characterSpacing: 0.5, margin: [0, 4, 0, 0] },
+              { text: 'Rua da Fonte 29, Tornada • 2500-315 Caldas da Rainha • NIF: PT513 807 624 • 964 727 712 • lavimax.lda@gmail.com', fontSize: 7, color: PDF_COLORS.textMuted, margin: [0, 1, 0, 0] },
+              {
+                margin: [0, 4, 0, 0],
+                columns: [
+                  { text: 'v1.0.0 · © 2026 Inforshine · Soluções Tecnológicas', fontSize: 7, color: PDF_COLORS.textDim },
+                  { text: 'Página ' + currentPage + ' de ' + pageCount, fontSize: 7, color: PDF_COLORS.textDim, alignment: 'right', width: 90 }
+                ]
+              }
+            ]
+          }
         ]
       };
     },
@@ -2863,8 +2869,9 @@ function buildQuoteDocDefinition(q) {
             return rowIndex % 2 === 0 ? PDF_COLORS.cardBg : null;
           },
           hLineWidth: (i, node) => (i === 0 || i === 1 || i === node.table.body.length ? 0.5 : 0.3),
-          vLineWidth: () => 0,
-          hLineColor: () => PDF_COLORS.border
+          vLineWidth: (i, node) => (i === 0 || i === node.table.widths.length ? 0.5 : 0),
+          hLineColor: () => PDF_COLORS.border,
+          vLineColor: () => PDF_COLORS.border
         }
       },
 
@@ -2876,15 +2883,20 @@ function buildQuoteDocDefinition(q) {
           { width: '*', text: '' },
           {
             width: 240,
-            table: {
-              widths: ['*', 90],
-              body: totalRows
-            },
-            layout: {
-              hLineWidth: () => 0,
-              vLineWidth: () => 0,
-              fillColor: (rowIndex) => rowIndex < totalRows.length - 1 ? PDF_COLORS.cardBg : null
-            }
+            stack: [
+              {
+                table: {
+                  widths: ['*', 90],
+                  body: totalRows
+                },
+                layout: {
+                  hLineWidth: () => 0,
+                  vLineWidth: () => 0,
+                  fillColor: () => PDF_COLORS.cardBg
+                }
+              },
+              grandTotalCard
+            ]
           }
         ]
       },
