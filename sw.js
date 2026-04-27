@@ -1,4 +1,5 @@
-const CACHE_NAME = 'lavimax-orcamentos-v8';
+const CACHE_NAME = 'lavimax-orcamentos-v9';
+const HTML2PDF_URL = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
 const ASSETS = [
   './',
   './index.html',
@@ -6,7 +7,8 @@ const ASSETS = [
   './icon-192.png',
   './icon-512.png',
   './apple-touch-icon.png',
-  './favicon.ico'
+  './favicon.ico',
+  HTML2PDF_URL
 ];
 
 // Install: cache all assets
@@ -29,8 +31,12 @@ self.addEventListener('activate', event => {
 
 // Fetch: cache-first, fallback to network
 self.addEventListener('fetch', event => {
-  // Only handle same-origin requests
-  if (!event.request.url.startsWith(self.location.origin)) return;
+  const url = event.request.url;
+  const isSameOrigin = url.startsWith(self.location.origin);
+  // Permite servir a biblioteca html2pdf da cache mesmo sendo cross-origin
+  const isHtml2pdf = url.indexOf('html2pdf') !== -1;
+
+  if (!isSameOrigin && !isHtml2pdf) return;
 
   event.respondWith(
     caches.match(event.request).then(cached => {

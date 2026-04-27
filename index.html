@@ -18,6 +18,7 @@
 
 <!-- Google Identity Services -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
 
 <style>
   /* ===================== LOGIN OVERLAY ===================== */
@@ -224,6 +225,8 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   @page { size: A4; margin: 0; }
+
+  .print-header-wrap { display: block; }
 
   body {
     font-family: 'Inter', -apple-system, sans-serif;
@@ -647,6 +650,14 @@
     border-radius: 4px;
   }
 
+  /* Limpa estilos visuais do ecrã durante a geração do PDF */
+  body.pdf-rendering .page {
+    margin: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+  }
+
   .header {
     display: flex;
     justify-content: space-between;
@@ -899,16 +910,6 @@
   }
 
   .iva-select:focus { border-color: var(--blue-primary); }
-
-  @media print {
-    .iva-select {
-      border: none;
-      -webkit-appearance: none;
-      appearance: none;
-      background: transparent;
-      pointer-events: none;
-    }
-  }
 
   .items-table tbody tr.detail-row td {
     padding: 3px 12px 3px 42px;
@@ -1291,43 +1292,72 @@
 
   /* ===================== PRINT ===================== */
   @media print {
+    /* --- Esconder UI do app --- */
+    .sidebar, .top-bar, .quote-toolbar, .add-row-btn, .remove-btn,
+    .toggle-included, .hamburger, .sidebar-overlay, .no-print {
+      display: none !important;
+    }
+
     body { background: white; }
-    .sidebar, .top-bar, .quote-toolbar, .add-row-btn, .remove-btn, .toggle-included, .hamburger, .sidebar-overlay,
-    .no-print { display: none !important; }
     .main-content { margin-left: 0; }
     .quote-editor { padding: 0 !important; background: white; }
+
+    /*
+      Estratégia Chrome/Blink: .page torna-se uma CSS table.
+      display:table-header-group repete o cabeçalho em cada página
+      — é o único mecanismo que Chrome suporta para repetição de header.
+      O footer fica em fluxo normal (aparece uma vez, no fim do documento).
+    */
     .page {
+      display: table;
+      width: 210mm;
+      border-collapse: collapse;
       margin: 0;
       box-shadow: none;
       border-radius: 0;
-      overflow: visible;
-      width: 100%;
       min-height: 0;
-      /* espaço para IBAN (~43px) + assinaturas (~60px) + rodapé (~87px) + buffer */
-      padding-bottom: 210px;
+      padding: 0;
     }
 
-    /* Secção de fecho fixada no fundo — IBAN + assinaturas + rodapé */
-    .bank-info {
-      position: fixed;
-      bottom: 152px;
-      left: 0; right: 0;
+    /* === HEADER: repete no topo de cada página === */
+    .print-header-wrap {
+      display: table-header-group;
       background: white;
     }
+
+    /* === FOOTER + IBAN + assinaturas: fluxo normal, no fim === */
+    .footer,
+    .bank-info,
     .signatures-section {
-      position: fixed;
-      bottom: 88px;
-      left: 0; right: 0;
-      background: white;
-    }
-    .footer {
-      position: fixed;
-      bottom: 0;
-      left: 0; right: 0;
-      background: white;
+      position: static !important;
+      left: auto; right: auto; bottom: auto;
     }
 
-    /* === Layout compacto para impressão === */
+    /* === Tabela de itens: thead repete, linhas não partem === */
+    .items-table { border-collapse: collapse; width: 100%; }
+    .items-table thead { display: table-header-group; }
+    .items-table tfoot { display: table-footer-group; }
+    .items-table tr,
+    .items-table tr.detail-row {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .items-table tr.item-row {
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+
+    /* === Secções que nunca devem partir entre páginas === */
+    .totals-section,
+    .conditions-section,
+    .bank-info,
+    .signatures-section,
+    .info-section {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    /* === Layout compacto === */
     .header          { padding: 10px 24px 8px !important; }
     .company-bar     { padding: 3px 24px !important; gap: 18px !important; }
     .info-section    { padding: 7px 24px 5px !important; gap: 8px !important; }
@@ -1353,10 +1383,12 @@
     .signature-space { height: 20px !important; }
     .footer          { padding: 7px 24px !important; }
 
-    /* Nunca partir secções a meio de uma página */
-    .totals-section, .conditions-section {
-      page-break-inside: avoid;
-      break-inside: avoid;
+    .iva-select {
+      border: none;
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      pointer-events: none;
     }
   }
 
@@ -1464,7 +1496,7 @@
         <div class="top-bar-actions">
           <button class="btn" onclick="recalculate()">&#8635; Recalcular</button>
           <button class="btn btn-success" onclick="saveQuote()">&#10003; Guardar</button>
-          <button class="btn btn-primary" onclick="window.print()">&#9113; Imprimir / PDF</button>
+          <button class="btn btn-primary" onclick="printCurrentPage()">&#9113; Gerar PDF</button>
         </div>
       </div>
 
@@ -1489,6 +1521,7 @@
 
         <!-- The printable page -->
         <div class="page" id="quotePage">
+          <div class="print-header-wrap">
           <div class="header">
             <div class="header-left">
               <div class="logo-container">
@@ -1511,6 +1544,7 @@
             <div class="company-bar-item"><span class="icon">&#9993;</span> lavimax.lda@gmail.com</div>
             <div class="company-bar-item"><span class="icon">&#9670;</span> NIF: PT513 807 624</div>
           </div>
+          </div><!-- /.print-header-wrap -->
 
           <div class="info-section">
             <div class="info-card">
@@ -2374,7 +2408,7 @@ function renderQuotesList() {
       <td><div class="actions-cell">
         <button class="btn-icon" onclick="loadQuote('${q.id}')" title="Editar">&#9998;</button>
         <button class="btn-icon" onclick="duplicateQuote('${q.id}')" title="Duplicar">&#128203;</button>
-        <button class="btn-icon" onclick="printQuote('${q.id}')" title="Imprimir">&#9113;</button>
+        <button class="btn-icon" onclick="printQuote('${q.id}')" title="Gerar PDF">&#9113;</button>
         <button class="btn-icon danger" onclick="deleteQuote('${q.id}')" title="Eliminar">&#128465;</button>
       </div></td>
     </tr>`;
@@ -2383,9 +2417,105 @@ function renderQuotesList() {
   container.innerHTML = html;
 }
 
-function printQuote(id) {
+async function generateQuotePdf(filename) {
+  if (typeof html2pdf === 'undefined') {
+    showToast('Biblioteca de PDF ainda a carregar. Tente novamente.', 'error');
+    return;
+  }
+
+  const pageEl = document.getElementById('quotePage');
+  const headerEl = pageEl ? pageEl.querySelector('.print-header-wrap') : null;
+  if (!pageEl || !headerEl) {
+    showToast('Não foi possível gerar o PDF.', 'error');
+    return;
+  }
+
+  showToast('A gerar PDF...');
+  document.body.classList.add('pdf-rendering');
+
+  try {
+    // 1) Captura o cabeçalho como imagem (será injectada em todas as páginas)
+    const headerCanvas = await window.html2canvas(headerEl, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff'
+    });
+    const headerImgData = headerCanvas.toDataURL('image/jpeg', 0.95);
+    const headerHeightMM = (headerCanvas.height / headerCanvas.width) * 210;
+
+    // 2) Esconder cabeçalho durante o render do corpo (vai ser sobreposto como imagem)
+    const prevDisplay = headerEl.style.display;
+    headerEl.style.display = 'none';
+
+    // 3) Render do corpo com margem superior reservada para o cabeçalho
+    const opt = {
+      margin: [headerHeightMM + 2, 0, 8, 0],
+      filename: filename,
+      image: { type: 'jpeg', quality: 0.95 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      },
+      jsPDF: {
+        unit: 'mm',
+        format: 'a4',
+        orientation: 'portrait',
+        compress: true
+      },
+      pagebreak: {
+        mode: ['css', 'legacy'],
+        avoid: [
+          '.bank-info',
+          '.signatures-section',
+          '.footer',
+          '.totals-section',
+          '.conditions-section',
+          '.info-section',
+          'tr'
+        ]
+      }
+    };
+
+    const pdf = await html2pdf().set(opt).from(pageEl).toPdf().get('pdf');
+
+    // 4) Restaurar cabeçalho no DOM
+    headerEl.style.display = prevDisplay;
+
+    // 5) Adicionar imagem do cabeçalho no topo de TODAS as páginas
+    const pageCount = pdf.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      pdf.setPage(i);
+      pdf.addImage(headerImgData, 'JPEG', 0, 0, 210, headerHeightMM);
+    }
+
+    // 6) Guardar
+    pdf.save(filename);
+    showToast('PDF gerado com sucesso', 'success');
+  } catch (err) {
+    headerEl.style.display = '';
+    console.error('Erro ao gerar PDF:', err);
+    showToast('Erro ao gerar PDF: ' + (err.message || err), 'error');
+  } finally {
+    document.body.classList.remove('pdf-rendering');
+  }
+}
+
+// Chamado pelo botão de impressão na lista de orçamentos
+async function printQuote(id) {
   loadQuote(id);
-  setTimeout(() => window.print(), 300);
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+  const quote = getQuotes().find(x => x.id === id);
+  const filename = ((quote && quote.number) ? quote.number : 'orcamento') + '.pdf';
+  return generateQuotePdf(filename);
+}
+
+// Chamado pelo botão "Gerar PDF" da toolbar (orçamento corrente em edição)
+function printCurrentPage() {
+  const num = document.getElementById('quoteNumber')?.textContent?.trim() || 'orcamento';
+  return generateQuotePdf(num + '.pdf');
 }
 
 // ===================== CLIENT PICKER =====================
