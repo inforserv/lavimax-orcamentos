@@ -1085,9 +1085,9 @@
     font-size: 7.5px;
     color: var(--text-muted);
     letter-spacing: 0.5px;
-    padding: 10px 24px 4px;
-    border-top: 1px dashed var(--border-light);
-    margin: 12px 24px 0;
+    padding: 6px 24px 4px;
+    border-bottom: 1px dashed var(--border-light);
+    margin-bottom: 6px;
   }
 
   .footer {
@@ -1303,6 +1303,16 @@
       overflow: visible;
       width: 100%;
       min-height: 0;
+      padding-bottom: 80px; /* reserva espaço para o rodapé fixo */
+    }
+
+    /* Rodapé fixo no fundo de cada página — funciona com min-height:0 */
+    .footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
     }
 
     /* === Layout compacto para impressão === */
@@ -1329,16 +1339,15 @@
     .signatures-section { padding: 6px 24px !important; }
     .signature-box   { padding: 4px !important; }
     .signature-space { height: 20px !important; }
-    .doc-disclaimer  { padding: 5px 24px 2px !important; margin: 4px 24px 0 !important; }
     .footer          { padding: 7px 24px !important; }
 
     /* Nunca partir secções a meio de uma página */
     .totals-section, .conditions-section, .bank-info,
-    .signatures-section, .doc-disclaimer, .footer {
+    .signatures-section, .footer {
       page-break-inside: avoid;
       break-inside: avoid;
     }
-    .signatures-section, .doc-disclaimer, .footer {
+    .signatures-section {
       page-break-before: avoid;
       break-before: avoid;
     }
@@ -1612,14 +1621,13 @@
             </div>
           </div>
 
-          <div class="doc-disclaimer">
-            Este documento é um orçamento e <strong>não serve de fatura</strong>.
-          </div>
-
           <div class="footer">
+            <div class="doc-disclaimer">
+              Este documento é um orçamento e <strong>não serve de fatura</strong>.
+            </div>
             <div class="footer-brand">LAVIMAX</div>
             <div class="footer-text">Rua da Fonte 29, Tornada &bull; 2500-315 Caldas da Rainha &bull; NIF: PT513 807 624 &bull; 964 727 712 &bull; lavimax.lda@gmail.com</div>
-            <div class="footer-text" style="margin-top:6px;font-size:7px;opacity:0.5">v1.0.0 &bull; &copy; 2026 Inforshine &bull; Soluções Tecnológicas</div>
+            <div class="footer-text" style="margin-top:4px;font-size:7px;opacity:0.5">v1.0.0 &bull; &copy; 2026 Inforshine &bull; Soluções Tecnológicas</div>
           </div>
         </div>
       </div>
