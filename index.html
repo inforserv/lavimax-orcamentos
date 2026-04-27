@@ -1297,20 +1297,20 @@
     .no-print { display: none !important; }
     .main-content { margin-left: 0; }
     .quote-editor { padding: 0; }
-    .page { margin: 0; box-shadow: none; border-radius: 0; }
-    /* Rodapé fixo no fundo de cada página impressa */
-    .footer {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: white;
-      z-index: 100;
+    /* Flex column para que o espaçador empurre o rodapé para o fundo da página A4 */
+    .page {
+      margin: 0;
+      box-shadow: none;
+      border-radius: 0;
+      overflow: visible;
+      display: flex;
+      flex-direction: column;
+      min-height: 297mm;
     }
-    /* Espaçador para o conteúdo não ficar escondido atrás do rodapé */
+    /* Cresce para preencher o espaço livre — rodapé fica sempre no fundo */
     .print-footer-spacer {
       display: block;
-      height: 65px;
+      flex: 1;
     }
   }
 
