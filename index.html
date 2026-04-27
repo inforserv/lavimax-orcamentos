@@ -2613,8 +2613,9 @@ function buildQuoteDocDefinition(q) {
   };
 
   // ----- Cartões de info (cliente / orçamento) -----
-  // Cada card tem um título azul com cantos arredondados (canvas) seguido
-  // de um corpo com borda subtil (table com layout custom).
+  // Título azul com cantos arredondados (canvas) seguido de conteúdo
+  // sem borda — evita a colisão visual rounded-pill em cima de
+  // rectângulo bordado.
   const CARD_WIDTH = 259; // (531 área conteúdo - 13 spacer) / 2
 
   function cardTitleBlock(text) {
@@ -2628,31 +2629,17 @@ function buildQuoteDocDefinition(q) {
     };
   }
 
-  const cardBodyLayout = {
-    hLineWidth: (i, node) => (i === 0 || i === node.table.body.length) ? 0.5 : 0,
-    vLineWidth: (i, node) => (i === 0 || i === node.table.widths.length) ? 0.5 : 0,
-    hLineColor: () => PDF_COLORS.border,
-    vLineColor: () => PDF_COLORS.border
-  };
-
   const clientCard = {
     stack: [
       cardTitleBlock('DADOS DO CLIENTE'),
       {
-        margin: [0, 4, 0, 0],
-        table: {
-          widths: ['*'],
-          body: [[{
-            margin: [10, 8, 10, 8],
-            stack: [
-              { columns: [{ text: 'Nome', width: 60, style: 'rowLabel' }, { text: q.client.name || '—', style: 'rowValue' }] },
-              { columns: [{ text: 'Morada', width: 60, style: 'rowLabel' }, { text: q.client.address || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] },
-              { columns: [{ text: 'NIF', width: 60, style: 'rowLabel' }, { text: q.client.nif || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] },
-              { columns: [{ text: 'Contacto', width: 60, style: 'rowLabel' }, { text: q.client.contact || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] }
-            ]
-          }]]
-        },
-        layout: cardBodyLayout
+        margin: [10, 10, 10, 0],
+        stack: [
+          { columns: [{ text: 'Nome', width: 60, style: 'rowLabel' }, { text: q.client.name || '—', style: 'rowValue' }] },
+          { columns: [{ text: 'Morada', width: 60, style: 'rowLabel' }, { text: q.client.address || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] },
+          { columns: [{ text: 'NIF', width: 60, style: 'rowLabel' }, { text: q.client.nif || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] },
+          { columns: [{ text: 'Contacto', width: 60, style: 'rowLabel' }, { text: q.client.contact || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] }
+        ]
       }
     ]
   };
@@ -2661,21 +2648,14 @@ function buildQuoteDocDefinition(q) {
     stack: [
       cardTitleBlock('INFORMAÇÕES DO ORÇAMENTO'),
       {
-        margin: [0, 4, 0, 0],
-        table: {
-          widths: ['*'],
-          body: [[{
-            margin: [10, 8, 10, 8],
-            stack: [
-              { columns: [{ text: 'Data de emissão', width: 90, style: 'rowLabel' }, { text: q.date || '—', style: 'rowValue' }] },
-              { columns: [{ text: 'Válido até', width: 90, style: 'rowLabel' }, { text: q.validUntil || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] },
-              { columns: [{ text: 'Local da obra', width: 90, style: 'rowLabel' }, { text: q.location || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] },
-              { columns: [{ text: 'Prazo de execução', width: 90, style: 'rowLabel' }, { text: q.deadline || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] },
-              { columns: [{ text: 'Pagamento', width: 90, style: 'rowLabel' }, { text: q.payment || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] }
-            ]
-          }]]
-        },
-        layout: cardBodyLayout
+        margin: [10, 10, 10, 0],
+        stack: [
+          { columns: [{ text: 'Data de emissão', width: 90, style: 'rowLabel' }, { text: q.date || '—', style: 'rowValue' }] },
+          { columns: [{ text: 'Válido até', width: 90, style: 'rowLabel' }, { text: q.validUntil || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] },
+          { columns: [{ text: 'Local da obra', width: 90, style: 'rowLabel' }, { text: q.location || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] },
+          { columns: [{ text: 'Prazo de execução', width: 90, style: 'rowLabel' }, { text: q.deadline || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] },
+          { columns: [{ text: 'Pagamento', width: 90, style: 'rowLabel' }, { text: q.payment || '—', style: 'rowValue' }], margin: [0, 4, 0, 0] }
+        ]
       }
     ]
   };
