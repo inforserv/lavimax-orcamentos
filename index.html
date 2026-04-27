@@ -1289,29 +1289,21 @@
   }
 
   /* ===================== PRINT ===================== */
-  .print-footer-spacer { display: none; }
-
   @media print {
     body { background: white; }
     .sidebar, .top-bar, .quote-toolbar, .add-row-btn, .remove-btn, .toggle-included, .hamburger, .sidebar-overlay,
     .no-print { display: none !important; }
     .main-content { margin-left: 0; }
     .quote-editor { padding: 0; }
-    /* Flex column para que o espaçador empurre o rodapé para o fundo da página A4 */
-    .page {
-      margin: 0;
-      box-shadow: none;
-      border-radius: 0;
-      overflow: visible;
-      display: flex;
-      flex-direction: column;
-      min-height: 297mm;
+    .page { margin: 0; box-shadow: none; border-radius: 0; overflow: visible; }
+    /* Evitar quebras de página no meio de secções importantes */
+    .totals-section, .conditions-section, .iban-section,
+    .signatures-section, .doc-disclaimer, .footer {
+      page-break-inside: avoid;
+      break-inside: avoid;
     }
-    /* Cresce para preencher o espaço livre — rodapé fica sempre no fundo */
-    .print-footer-spacer {
-      display: block;
-      flex: 1;
-    }
+    /* Rodapé nunca inicia uma nova página sozinho */
+    .footer { page-break-before: avoid; break-before: avoid; }
   }
 
   /* Toast notifications */
@@ -1586,7 +1578,6 @@
             Este documento é um orçamento e <strong>não serve de fatura</strong>.
           </div>
 
-          <div class="print-footer-spacer"></div>
           <div class="footer">
             <div class="footer-brand">LAVIMAX</div>
             <div class="footer-text">Rua da Fonte 29, Tornada &bull; 2500-315 Caldas da Rainha &bull; NIF: PT513 807 624 &bull; 964 727 712 &bull; lavimax.lda@gmail.com</div>
