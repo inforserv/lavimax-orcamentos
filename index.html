@@ -2673,7 +2673,7 @@ function buildQuoteDocDefinition(q) {
   // o cenário típico de uma página 2 quase em branco só com as assinaturas.
   const closingBlock = {
     unbreakable: true,
-    margin: [0, 12, 0, 0],
+    margin: [0, 24, 0, 0],
     stack: [
       // IBAN
       {
@@ -2708,9 +2708,10 @@ function buildQuoteDocDefinition(q) {
           vLineWidth: () => 0
         }
       },
-      // Assinaturas
+      // Assinaturas — margem superior generosa = espaço em branco
+      // para o cliente assinar fisicamente com caneta acima da linha
       {
-        margin: [0, 18, 0, 0],
+        margin: [0, 56, 0, 0],
         columns: [
           {
             width: '*',
