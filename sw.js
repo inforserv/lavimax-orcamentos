@@ -1,6 +1,6 @@
-const CACHE_NAME = 'lavimax-orcamentos-v10';
-const HTML2CANVAS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-const HTML2PDF_URL = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+const CACHE_NAME = 'lavimax-orcamentos-v11';
+const PDFMAKE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js';
+const PDFMAKE_FONTS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/vfs_fonts.js';
 const ASSETS = [
   './',
   './index.html',
@@ -9,8 +9,8 @@ const ASSETS = [
   './icon-512.png',
   './apple-touch-icon.png',
   './favicon.ico',
-  HTML2CANVAS_URL,
-  HTML2PDF_URL
+  PDFMAKE_URL,
+  PDFMAKE_FONTS_URL
 ];
 
 // Install: cache all assets
@@ -35,8 +35,8 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = event.request.url;
   const isSameOrigin = url.startsWith(self.location.origin);
-  // Permite servir as bibliotecas de PDF da cache mesmo sendo cross-origin
-  const isPdfLib = url.indexOf('html2pdf') !== -1 || url.indexOf('html2canvas') !== -1;
+  // Permite servir as bibliotecas pdfmake da cache mesmo sendo cross-origin
+  const isPdfLib = url.indexOf('pdfmake') !== -1 || url.indexOf('vfs_fonts') !== -1;
 
   if (!isSameOrigin && !isPdfLib) return;
 

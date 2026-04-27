@@ -18,8 +18,8 @@
 
 <!-- Google Identity Services -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/vfs_fonts.js" defer></script>
 
 <style>
   /* ===================== LOGIN OVERLAY ===================== */
@@ -2418,89 +2418,495 @@ function renderQuotesList() {
   container.innerHTML = html;
 }
 
-async function generateQuotePdf(filename) {
-  if (typeof html2pdf === 'undefined' || typeof window.html2canvas !== 'function') {
-    showToast('Bibliotecas de PDF ainda a carregar. Tente novamente em 2 segundos.', 'error');
-    return;
-  }
+// ===================== PALETA E HELPERS PDF =====================
+const PDF_COLORS = {
+  bluePrimary: '#0066cc',
+  blueDark: '#003d7a',
+  blueLight: '#e8f4fd',
+  textDark: '#1e293b',
+  textBody: '#334155',
+  textMuted: '#64748b',
+  textDim: '#94a3b8',
+  cardBg: '#f8fafc',
+  border: '#e2e8f0',
+  white: '#ffffff'
+};
 
-  const pageEl = document.getElementById('quotePage');
-  const headerEl = pageEl ? pageEl.querySelector('.print-header-wrap') : null;
-  if (!pageEl || !headerEl) {
-    showToast('Não foi possível gerar o PDF.', 'error');
-    return;
-  }
+function readQuoteFromDom() {
+  const $ = id => document.getElementById(id);
+  const txt = id => ($(id)?.textContent || '').trim();
 
-  showToast('A gerar PDF...');
-  document.body.classList.add('pdf-rendering');
+  const items = [];
+  document.querySelectorAll('#tableBody tr').forEach(row => {
+    if (row.classList.contains('detail-row')) {
+      items.push({ detail: true, text: row.querySelector('.item-detail')?.textContent || '' });
+      return;
+    }
+    const desc = row.querySelector('.item-desc')?.textContent || '';
+    const qty = row.querySelector('.item-qty')?.textContent || '';
+    const price = row.querySelector('.item-price')?.textContent || '';
+    const ivaSel = row.querySelector('.iva-select');
+    const iva = ivaSel ? ivaSel.value : '23';
+    const included = row.classList.contains('included');
+    items.push({ desc, qty, price, iva, included });
+  });
 
-  try {
-    // 1) Captura o cabeçalho como imagem (será injectada em todas as páginas)
-    const headerCanvas = await window.html2canvas(headerEl, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff'
+  const conditions = Array.from(document.querySelectorAll('#conditionsCard .condition-text'))
+    .map(el => el.textContent.trim())
+    .filter(Boolean);
+
+  return {
+    number: txt('quoteNumber'),
+    date: txt('quoteDate'),
+    validUntil: txt('quoteValidUntil'),
+    client: {
+      name: txt('clientName'),
+      address: txt('clientAddress'),
+      nif: txt('clientNif'),
+      contact: txt('clientContact')
+    },
+    location: txt('quoteLocation'),
+    deadline: txt('quoteDeadline'),
+    payment: txt('quotePayment'),
+    items,
+    conditions
+  };
+}
+
+function computeQuoteTotals(items) {
+  let subtotal = 0;
+  const ivaByRate = {};
+  items.forEach(it => {
+    if (it.detail || it.included) return;
+    const qty = parseFloat((it.qty || '0').replace(',', '.')) || 0;
+    const price = parseFloat((it.price || '0').replace(',', '.')) || 0;
+    const lineTotal = qty * price;
+    subtotal += lineTotal;
+    const rate = parseInt(it.iva || '23');
+    ivaByRate[rate] = (ivaByRate[rate] || 0) + lineTotal;
+  });
+  let ivaTotal = 0;
+  const ivaLines = Object.keys(ivaByRate).map(Number).sort((a,b) => a-b).map(rate => {
+    const amount = ivaByRate[rate] * (rate/100);
+    ivaTotal += amount;
+    const label = rate === 6 ? 'Reduzida' : rate === 13 ? 'Intermédia' : 'Normal';
+    return { rate, label, amount };
+  });
+  return { subtotal, ivaLines, ivaTotal, grandTotal: subtotal + ivaTotal };
+}
+
+function fmtMoney(n) {
+  return n.toFixed(2).replace('.', ',') + ' €';
+}
+
+function buildQuoteDocDefinition(q) {
+  const totals = computeQuoteTotals(q.items);
+  const logoEl = document.querySelector('.logo-container img');
+  const logoDataUrl = logoEl ? logoEl.src : null;
+
+  // ----- Linhas da tabela de itens -----
+  const tableHeader = [
+    { text: '#', style: 'thCenter' },
+    { text: 'DESCRIÇÃO', style: 'th' },
+    { text: 'QTD.', style: 'thCenter' },
+    { text: 'PREÇO UNIT.', style: 'thRight' },
+    { text: 'IVA', style: 'thCenter' },
+    { text: 'TOTAL', style: 'thRight' }
+  ];
+  // Agrupa cada item com as suas linhas de detalhe (que vêm imediatamente a seguir).
+  // O detalhe entra no mesmo cell do desc (stack) — assim pdfmake nunca separa
+  // o detalhe do item pai numa quebra de página.
+  const groups = [];
+  q.items.forEach(it => {
+    if (it.detail) {
+      const last = groups[groups.length - 1];
+      if (last) {
+        (last.details = last.details || []).push(it.text || '');
+      } else {
+        // detalhe órfão (não há item pai): cria um item vazio para o suportar
+        groups.push({ orphanDetail: it.text || '' });
+      }
+    } else {
+      groups.push({ item: it, details: [] });
+    }
+  });
+
+  const itemRows = [];
+  let visibleIndex = 0;
+  groups.forEach(g => {
+    if (g.orphanDetail !== undefined) {
+      itemRows.push([
+        { text: '↳ ' + g.orphanDetail, italics: true, color: PDF_COLORS.textMuted, fontSize: 8, colSpan: 6, margin: [16, 2, 4, 2] },
+        {}, {}, {}, {}, {}
+      ]);
+      return;
+    }
+    const it = g.item;
+    visibleIndex++;
+    const descStack = [{ text: it.desc || '', color: it.included ? PDF_COLORS.textBody : PDF_COLORS.textDark, italics: !!it.included }];
+    (g.details || []).forEach(d => {
+      descStack.push({ text: '↳ ' + d, italics: true, color: PDF_COLORS.textMuted, fontSize: 8, margin: [10, 2, 0, 0] });
     });
-    const headerImgData = headerCanvas.toDataURL('image/jpeg', 0.95);
-    const headerHeightMM = (headerCanvas.height / headerCanvas.width) * 210;
+    if (it.included) {
+      const inclText = (it.desc || '').toLowerCase().includes('deslocaç') ? 'Incluídas' : 'Incluída';
+      itemRows.push([
+        { text: String(visibleIndex), style: 'tdNum' },
+        { stack: descStack },
+        { text: '—', alignment: 'center', color: PDF_COLORS.textDim },
+        { text: inclText, italics: true, color: PDF_COLORS.textMuted },
+        { text: '—', alignment: 'center', color: PDF_COLORS.textDim },
+        { text: '—', alignment: 'right', color: PDF_COLORS.textDim }
+      ]);
+    } else {
+      const qty = parseFloat((it.qty || '0').replace(',', '.')) || 0;
+      const price = parseFloat((it.price || '0').replace(',', '.')) || 0;
+      const lineTotal = qty * price;
+      itemRows.push([
+        { text: String(visibleIndex), style: 'tdNum' },
+        { stack: descStack },
+        { text: it.qty || '0', alignment: 'center' },
+        { text: fmtMoney(price), alignment: 'right' },
+        { text: (it.iva || '23') + '%', alignment: 'center' },
+        { text: fmtMoney(lineTotal), alignment: 'right', bold: true }
+      ]);
+    }
+  });
 
-    // 2) Esconder cabeçalho durante o render do corpo (vai ser sobreposto como imagem)
-    const prevDisplay = headerEl.style.display;
-    headerEl.style.display = 'none';
+  // ----- Bloco de totais -----
+  const totalRows = [];
+  totalRows.push([
+    { text: 'Subtotal (s/ IVA)', style: 'totLabel' },
+    { text: fmtMoney(totals.subtotal), style: 'totValue' }
+  ]);
+  totals.ivaLines.forEach(iv => {
+    totalRows.push([
+      { text: 'IVA ' + iv.rate + '% (' + iv.label + ')', style: 'totLabel' },
+      { text: fmtMoney(iv.amount), style: 'totValue' }
+    ]);
+  });
+  if (totals.ivaLines.length === 0) {
+    totalRows.push([
+      { text: 'IVA 23% (Normal)', style: 'totLabel' },
+      { text: fmtMoney(0), style: 'totValue' }
+    ]);
+  }
+  totalRows.push([
+    { text: 'Total IVA', style: 'totLabel' },
+    { text: fmtMoney(totals.ivaTotal), style: 'totValue' }
+  ]);
+  totalRows.push([
+    { text: 'TOTAL', style: 'grandTotLabel', fillColor: PDF_COLORS.bluePrimary },
+    { text: fmtMoney(totals.grandTotal), style: 'grandTotValue', fillColor: PDF_COLORS.bluePrimary }
+  ]);
 
-    // 3) Render do corpo com margem superior reservada para o cabeçalho
-    const opt = {
-      margin: [headerHeightMM + 2, 0, 8, 0],
-      filename: filename,
-      image: { type: 'jpeg', quality: 0.95 },
-      html2canvas: {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff'
+  // ----- Cartões de info (cliente / orçamento) -----
+  const clientCard = {
+    table: {
+      widths: ['*'],
+      body: [
+        [{ text: 'DADOS DO CLIENTE', style: 'cardTitle', fillColor: PDF_COLORS.bluePrimary }],
+        [{
+          margin: [8, 6, 8, 6],
+          stack: [
+            { columns: [{ text: 'Nome', width: 60, style: 'rowLabel' }, { text: q.client.name || '—', style: 'rowValue' }] },
+            { columns: [{ text: 'Morada', width: 60, style: 'rowLabel' }, { text: q.client.address || '—', style: 'rowValue' }], margin: [0, 3, 0, 0] },
+            { columns: [{ text: 'NIF', width: 60, style: 'rowLabel' }, { text: q.client.nif || '—', style: 'rowValue' }], margin: [0, 3, 0, 0] },
+            { columns: [{ text: 'Contacto', width: 60, style: 'rowLabel' }, { text: q.client.contact || '—', style: 'rowValue' }], margin: [0, 3, 0, 0] }
+          ]
+        }]
+      ]
+    },
+    layout: 'noBorders'
+  };
+
+  const infoCard = {
+    table: {
+      widths: ['*'],
+      body: [
+        [{ text: 'INFORMAÇÕES DO ORÇAMENTO', style: 'cardTitle', fillColor: PDF_COLORS.bluePrimary }],
+        [{
+          margin: [8, 6, 8, 6],
+          stack: [
+            { columns: [{ text: 'Data de emissão', width: 90, style: 'rowLabel' }, { text: q.date || '—', style: 'rowValue' }] },
+            { columns: [{ text: 'Válido até', width: 90, style: 'rowLabel' }, { text: q.validUntil || '—', style: 'rowValue' }], margin: [0, 3, 0, 0] },
+            { columns: [{ text: 'Local da obra', width: 90, style: 'rowLabel' }, { text: q.location || '—', style: 'rowValue' }], margin: [0, 3, 0, 0] },
+            { columns: [{ text: 'Prazo de execução', width: 90, style: 'rowLabel' }, { text: q.deadline || '—', style: 'rowValue' }], margin: [0, 3, 0, 0] },
+            { columns: [{ text: 'Pagamento', width: 90, style: 'rowLabel' }, { text: q.payment || '—', style: 'rowValue' }], margin: [0, 3, 0, 0] }
+          ]
+        }]
+      ]
+    },
+    layout: 'noBorders'
+  };
+
+  // ----- Condições -----
+  const conditionsBlock = q.conditions.length === 0 ? null : {
+    unbreakable: true,
+    margin: [0, 8, 0, 0],
+    stack: [
+      { text: 'CONDIÇÕES GERAIS', style: 'sectionTitle' },
+      {
+        table: {
+          widths: ['*'],
+          body: [[{
+            margin: [10, 8, 10, 8],
+            stack: q.conditions.map(c => ({
+              columns: [
+                { text: '•', width: 10, color: PDF_COLORS.bluePrimary, bold: true },
+                { text: c, fontSize: 9, color: PDF_COLORS.textBody }
+              ],
+              margin: [0, 1, 0, 1]
+            }))
+          }]]
+        },
+        layout: {
+          fillColor: PDF_COLORS.cardBg,
+          hLineWidth: () => 0,
+          vLineWidth: () => 0
+        }
+      }
+    ]
+  };
+
+  // ----- IBAN + Assinaturas (um único bloco indivisível, no fim) -----
+  // Garante que IBAN e assinaturas ficam SEMPRE na mesma página — evita
+  // o cenário típico de uma página 2 quase em branco só com as assinaturas.
+  const closingBlock = {
+    unbreakable: true,
+    margin: [0, 12, 0, 0],
+    stack: [
+      // IBAN
+      {
+        table: {
+          widths: ['*'],
+          body: [[{
+            margin: [12, 10, 12, 10],
+            columns: [
+              {
+                width: 28,
+                stack: [
+                  { canvas: [
+                    { type: 'rect', x: 0, y: 0, w: 24, h: 24, r: 4, color: PDF_COLORS.bluePrimary }
+                  ]},
+                  { text: 'IBAN', color: PDF_COLORS.white, fontSize: 7, bold: true, alignment: 'center', characterSpacing: 1, margin: [0, -16, 0, 0] }
+                ]
+              },
+              {
+                width: '*',
+                margin: [4, 2, 0, 0],
+                stack: [
+                  { text: 'IBAN PARA TRANSFERÊNCIA (CGD)', fontSize: 8, color: PDF_COLORS.textDim, characterSpacing: 1, bold: true },
+                  { text: 'PT50 0035 0183 0006 9933 0307 6', fontSize: 12, bold: true, color: PDF_COLORS.bluePrimary, margin: [0, 2, 0, 0] }
+                ]
+              }
+            ]
+          }]]
+        },
+        layout: {
+          fillColor: () => PDF_COLORS.blueLight,
+          hLineWidth: () => 0,
+          vLineWidth: () => 0
+        }
       },
-      jsPDF: {
-        unit: 'mm',
-        format: 'a4',
-        orientation: 'portrait',
-        compress: true
-      },
-      pagebreak: {
-        mode: ['css', 'legacy'],
-        avoid: [
-          '.bank-info',
-          '.signatures-section',
-          '.footer',
-          '.totals-section',
-          '.conditions-section',
-          '.info-section',
-          'tr'
+      // Assinaturas
+      {
+        margin: [0, 18, 0, 0],
+        columns: [
+          {
+            width: '*',
+            stack: [
+              { canvas: [{ type: 'line', x1: 20, y1: 0, x2: 220, y2: 0, lineWidth: 0.5, lineColor: PDF_COLORS.textDim }] },
+              { text: 'ASSINATURA DO CLIENTE', alignment: 'center', fontSize: 8, color: PDF_COLORS.textMuted, characterSpacing: 1, bold: true, margin: [0, 6, 0, 0] },
+              { text: 'Data: ___/___/______', alignment: 'center', fontSize: 8, color: PDF_COLORS.textDim, margin: [0, 4, 0, 0] }
+            ]
+          },
+          {
+            width: '*',
+            stack: [
+              { canvas: [{ type: 'line', x1: 20, y1: 0, x2: 220, y2: 0, lineWidth: 0.5, lineColor: PDF_COLORS.textDim }] },
+              { text: 'PELA LAVIMAX', alignment: 'center', fontSize: 8, color: PDF_COLORS.textMuted, characterSpacing: 1, bold: true, margin: [0, 6, 0, 0] },
+              { text: 'Assinatura e Carimbo', alignment: 'center', fontSize: 8, color: PDF_COLORS.textDim, margin: [0, 4, 0, 0] }
+            ]
+          }
         ]
       }
-    };
+    ]
+  };
 
-    const pdf = await html2pdf().set(opt).from(pageEl).toPdf().get('pdf');
+  // ----- Documento -----
+  return {
+    pageSize: 'A4',
+    pageMargins: [32, 96, 32, 40],
+    info: {
+      title: 'Orçamento ' + q.number,
+      author: 'LAVIMAX, LDA.',
+      creator: 'LAVIMAX Orçamentos (Inforshine)'
+    },
+    defaultStyle: {
+      fontSize: 9,
+      color: PDF_COLORS.textBody,
+      lineHeight: 1.15
+    },
+    styles: {
+      th:        { color: PDF_COLORS.white, bold: true, fontSize: 8, characterSpacing: 0.5, margin: [4, 6, 4, 6] },
+      thCenter:  { color: PDF_COLORS.white, bold: true, fontSize: 8, characterSpacing: 0.5, alignment: 'center', margin: [4, 6, 4, 6] },
+      thRight:   { color: PDF_COLORS.white, bold: true, fontSize: 8, characterSpacing: 0.5, alignment: 'right', margin: [4, 6, 4, 6] },
+      tdNum:     { color: PDF_COLORS.bluePrimary, bold: true, alignment: 'center' },
+      cardTitle: { color: PDF_COLORS.white, bold: true, fontSize: 9, characterSpacing: 1, margin: [10, 5, 10, 5] },
+      rowLabel:  { color: PDF_COLORS.textDim, fontSize: 8, bold: true, characterSpacing: 0.3 },
+      rowValue:  { color: PDF_COLORS.textDark, fontSize: 9, alignment: 'right' },
+      sectionTitle: { color: PDF_COLORS.bluePrimary, bold: true, fontSize: 10, characterSpacing: 1, margin: [0, 0, 0, 6] },
+      totLabel:  { color: PDF_COLORS.textBody, fontSize: 9, alignment: 'right', margin: [0, 3, 8, 3] },
+      totValue:  { color: PDF_COLORS.textDark, fontSize: 9, bold: true, alignment: 'right', margin: [0, 3, 8, 3] },
+      grandTotLabel: { color: PDF_COLORS.white, fontSize: 10, bold: true, characterSpacing: 1, alignment: 'right', margin: [0, 6, 8, 6] },
+      grandTotValue: { color: PDF_COLORS.white, fontSize: 12, bold: true, alignment: 'right', margin: [0, 6, 8, 6] }
+    },
 
-    // 4) Restaurar cabeçalho no DOM
-    headerEl.style.display = prevDisplay;
+    // Cabeçalho azul em todas as páginas
+    header: function(currentPage) {
+      const headerStack = [
+        // Banda azul
+        {
+          table: {
+            widths: ['*'],
+            body: [[{
+              fillColor: PDF_COLORS.bluePrimary,
+              border: [false, false, false, false],
+              margin: [32, 14, 32, 12],
+              columns: [
+                {
+                  width: 'auto',
+                  stack: logoDataUrl ? [{ image: logoDataUrl, width: 46, height: 46, margin: [0, 0, 12, 0] }] : []
+                },
+                {
+                  width: '*',
+                  stack: [
+                    { text: 'LAVIMAX, LDA.', color: PDF_COLORS.white, fontSize: 18, bold: true, characterSpacing: 1 },
+                    { text: 'ASSISTÊNCIA TÉCNICA • MANUTENÇÃO INDUSTRIAL • AUTOMATISMOS', color: '#bbd6f0', fontSize: 7, characterSpacing: 0.5, margin: [0, 2, 0, 0] },
+                    { text: 'ELETRODOMÉSTICOS GERAL • AQUECIMENTO CENTRAL • A/C', color: '#bbd6f0', fontSize: 7, characterSpacing: 0.5 }
+                  ],
+                  margin: [0, 2, 0, 0]
+                },
+                {
+                  width: 'auto',
+                  alignment: 'right',
+                  stack: [
+                    { text: 'ORÇAMENTO', color: PDF_COLORS.white, fontSize: 18, bold: true, characterSpacing: 2 },
+                    { text: 'N.º ' + q.number, color: '#bbd6f0', fontSize: 9, characterSpacing: 1, margin: [0, 2, 0, 0] }
+                  ]
+                }
+              ]
+            }]]
+          },
+          layout: 'noBorders'
+        },
+        // Barra de contactos
+        {
+          table: {
+            widths: ['*'],
+            body: [[{
+              fillColor: PDF_COLORS.cardBg,
+              border: [false, false, false, true],
+              margin: [32, 4, 32, 4],
+              columns: [
+                { text: 'Rua da Fonte 29, Tornada — 2500-315 Caldas da Rainha', fontSize: 7, color: PDF_COLORS.textMuted, width: '*' },
+                { text: 'Tel. 964 727 712', fontSize: 7, color: PDF_COLORS.textMuted, width: 'auto', margin: [10, 0, 0, 0] },
+                { text: 'lavimax.lda@gmail.com', fontSize: 7, color: PDF_COLORS.textMuted, width: 'auto', margin: [10, 0, 0, 0] },
+                { text: 'NIF PT513 807 624', fontSize: 7, color: PDF_COLORS.textMuted, width: 'auto', margin: [10, 0, 0, 0] }
+              ]
+            }]]
+          },
+          layout: {
+            hLineWidth: (i) => (i === 1 ? 0.5 : 0),
+            vLineWidth: () => 0,
+            hLineColor: () => PDF_COLORS.border
+          }
+        }
+      ];
+      return headerStack;
+    },
 
-    // 5) Adicionar imagem do cabeçalho no topo de TODAS as páginas
-    const pageCount = pdf.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      pdf.setPage(i);
-      pdf.addImage(headerImgData, 'JPEG', 0, 0, 210, headerHeightMM);
-    }
+    // Rodapé em todas as páginas
+    footer: function(currentPage, pageCount) {
+      return {
+        margin: [32, 8, 32, 0],
+        columns: [
+          { text: 'Este documento é um orçamento e não serve de fatura.', fontSize: 7, color: PDF_COLORS.textDim, italics: true },
+          { text: 'v1.0.0 · © 2026 Inforshine · Soluções Tecnológicas', fontSize: 7, color: PDF_COLORS.textDim, alignment: 'center' },
+          { text: 'Página ' + currentPage + ' de ' + pageCount, fontSize: 7, color: PDF_COLORS.textDim, alignment: 'right', width: 90 }
+        ]
+      };
+    },
 
-    // 6) Guardar
-    pdf.save(filename);
-    showToast('PDF gerado com sucesso', 'success');
+    content: [
+      // Info-cards
+      {
+        columns: [clientCard, { width: 12, text: '' }, infoCard],
+        margin: [0, 0, 0, 12]
+      },
+
+      // Título secção
+      { text: 'DESCRIÇÃO DOS TRABALHOS', style: 'sectionTitle', margin: [0, 4, 0, 6] },
+
+      // Tabela de itens (cabeçalho repete-se em todas as páginas)
+      {
+        table: {
+          headerRows: 1,
+          dontBreakRows: true,
+          widths: [22, '*', 30, 60, 32, 60],
+          body: [tableHeader, ...itemRows]
+        },
+        layout: {
+          fillColor: (rowIndex, node) => {
+            if (rowIndex === 0) return PDF_COLORS.bluePrimary;
+            return rowIndex % 2 === 0 ? PDF_COLORS.cardBg : null;
+          },
+          hLineWidth: (i, node) => (i === 0 || i === 1 || i === node.table.body.length ? 0.5 : 0.3),
+          vLineWidth: () => 0,
+          hLineColor: () => PDF_COLORS.border
+        }
+      },
+
+      // Totais (bloco indivisível, alinhado à direita)
+      {
+        unbreakable: true,
+        margin: [0, 10, 0, 0],
+        columns: [
+          { width: '*', text: '' },
+          {
+            width: 240,
+            table: {
+              widths: ['*', 90],
+              body: totalRows
+            },
+            layout: {
+              hLineWidth: () => 0,
+              vLineWidth: () => 0,
+              fillColor: (rowIndex) => rowIndex < totalRows.length - 1 ? PDF_COLORS.cardBg : null
+            }
+          }
+        ]
+      },
+
+      conditionsBlock,
+      closingBlock
+    ].filter(Boolean)
+  };
+}
+
+async function generateQuotePdf(filename) {
+  if (typeof pdfMake === 'undefined') {
+    showToast('Biblioteca de PDF ainda a carregar. Tente novamente em 2 segundos.', 'error');
+    return;
+  }
+  try {
+    const q = readQuoteFromDom();
+    const docDef = buildQuoteDocDefinition(q);
+    showToast('A gerar PDF...');
+    pdfMake.createPdf(docDef).download(filename);
   } catch (err) {
-    headerEl.style.display = '';
     console.error('Erro ao gerar PDF:', err);
     showToast('Erro ao gerar PDF: ' + (err.message || err), 'error');
-  } finally {
-    document.body.classList.remove('pdf-rendering');
   }
 }
 
