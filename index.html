@@ -689,12 +689,13 @@
   }
 
   .company-info .subtitle {
-    font-size: 9px;
+    font-size: 8px;
     font-weight: 400;
     color: rgba(255,255,255,0.75);
-    letter-spacing: 2.5px;
+    letter-spacing: 1px;
     text-transform: uppercase;
     margin-top: 3px;
+    line-height: 1.6;
   }
 
   .header-right { text-align: right; }
@@ -1278,13 +1279,29 @@
   }
 
   /* ===================== PRINT ===================== */
+  .print-footer-spacer { display: none; }
+
   @media print {
     body { background: white; }
     .sidebar, .top-bar, .quote-toolbar, .add-row-btn, .remove-btn, .toggle-included, .hamburger, .sidebar-overlay,
     .no-print { display: none !important; }
     .main-content { margin-left: 0; }
     .quote-editor { padding: 0; }
-    .page { margin: 0; box-shadow: none; border-radius: 0; min-height: 100vh; }
+    .page { margin: 0; box-shadow: none; border-radius: 0; }
+    /* Rodapé fixo no fundo de cada página impressa */
+    .footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      z-index: 100;
+    }
+    /* Espaçador para o conteúdo não ficar escondido atrás do rodapé */
+    .print-footer-spacer {
+      display: block;
+      height: 65px;
+    }
   }
 
   /* Toast notifications */
@@ -1423,7 +1440,7 @@
               </div>
               <div class="company-info">
                 <h1>LAVIMAX, LDA.</h1>
-                <div class="subtitle">Assistência Técnica &bull; Automatismos &bull; Portões</div>
+                <div class="subtitle">Assistência Técnica &bull; Manutenção Industrial &bull; Automatismos<br>Eletrodomésticos Geral &bull; Aquecimento Central e A/C</div>
               </div>
             </div>
             <div class="header-right">
@@ -1555,6 +1572,7 @@
             </div>
           </div>
 
+          <div class="print-footer-spacer"></div>
           <div class="footer">
             <div class="footer-brand">LAVIMAX</div>
             <div class="footer-text">Rua da Fonte 29, Tornada &bull; 2500-315 Caldas da Rainha &bull; NIF: PT513 807 624 &bull; 964 727 712 &bull; lavimax.lda@gmail.com</div>
