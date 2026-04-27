@@ -1303,15 +1303,27 @@
       overflow: visible;
       width: 100%;
       min-height: 0;
-      padding-bottom: 80px; /* reserva espaço para o rodapé fixo */
+      /* espaço para IBAN (~43px) + assinaturas (~60px) + rodapé (~87px) + buffer */
+      padding-bottom: 210px;
     }
 
-    /* Rodapé fixo no fundo de cada página — funciona com min-height:0 */
+    /* Secção de fecho fixada no fundo — IBAN + assinaturas + rodapé */
+    .bank-info {
+      position: fixed;
+      bottom: 152px;
+      left: 0; right: 0;
+      background: white;
+    }
+    .signatures-section {
+      position: fixed;
+      bottom: 88px;
+      left: 0; right: 0;
+      background: white;
+    }
     .footer {
       position: fixed;
       bottom: 0;
-      left: 0;
-      right: 0;
+      left: 0; right: 0;
       background: white;
     }
 
@@ -1333,7 +1345,7 @@
     .conditions-section { padding: 0 24px !important; margin-bottom: 5px !important; }
     .conditions-card { padding: 6px 12px !important; }
     .condition-item  { padding: 1px 0 !important; }
-    .bank-info       { padding: 0 24px !important; margin-bottom: 5px !important; }
+    .bank-info       { padding: 0 24px !important; margin-bottom: 0 !important; }
     .bank-card       { padding: 5px 12px !important; gap: 10px !important; }
     .bank-icon       { width: 28px !important; height: 28px !important; font-size: 14px !important; }
     .signatures-section { padding: 6px 24px !important; }
@@ -1342,14 +1354,9 @@
     .footer          { padding: 7px 24px !important; }
 
     /* Nunca partir secções a meio de uma página */
-    .totals-section, .conditions-section, .bank-info,
-    .signatures-section, .footer {
+    .totals-section, .conditions-section {
       page-break-inside: avoid;
       break-inside: avoid;
-    }
-    .signatures-section {
-      page-break-before: avoid;
-      break-before: avoid;
     }
   }
 
