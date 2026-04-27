@@ -2696,6 +2696,10 @@ function buildQuoteDocDefinition(q) {
     unbreakable: true,
     margin: [0, 24, 0, 0],
     stack: [
+      // Spacer invisível (canvas) — força o espaço acima do IBAN mesmo
+      // quando o bloco cai no topo de uma nova página (pdfmake nem sempre
+      // honra margem superior nesse caso).
+      { canvas: [{ type: 'rect', x: 0, y: 0, w: 1, h: 16, color: '#ffffff' }] },
       // IBAN — fundo azul claro com cantos arredondados (canvas + overlay)
       {
         stack: [
