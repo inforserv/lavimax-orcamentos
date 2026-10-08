@@ -1024,6 +1024,29 @@
 
   .condition-text { font-size: 8.5px; color: var(--text-muted); line-height: 1.6; }
 
+  /* Relatório técnico (só visível no modo "Orçamento c/ Relatório") */
+  .report-section { padding: 0 35px; margin-bottom: 14px; display: none; }
+  body.mode-report .report-section { display: block; }
+  .report-field { margin-bottom: 8px; }
+  .report-label {
+    font-size: 8px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--blue-primary); margin-bottom: 3px;
+  }
+  .report-text {
+    min-height: 34px; padding: 6px 10px;
+    background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px;
+    font-size: 9px; line-height: 1.6; color: var(--text-dark);
+    white-space: pre-wrap; outline: none;
+  }
+  .report-text:focus { border-color: var(--blue-primary); }
+  .report-text:empty::before { content: attr(data-placeholder); color: var(--text-dim, #94a3b8); font-style: italic; }
+  .doc-type-sub { display: none; font-size: 9px; font-weight: 700; letter-spacing: 1.5px; color: rgba(255,255,255,0.85); text-align: right; }
+  body.mode-report .doc-type-sub { display: block; }
+  .type-badge {
+    display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 4px;
+    background: var(--blue-light); color: var(--blue-primary); font-size: 9px; font-weight: 600; vertical-align: middle;
+  }
+
   .bank-info { padding: 0 35px; margin-bottom: 10px; }
 
   .bank-card {
@@ -1266,6 +1289,7 @@
 
     .totals-section { padding: 0 16px; }
     .conditions-section { padding: 0 16px; }
+    .report-section { padding: 0 16px; }
     .bank-info { padding: 0 16px; }
     .signatures-section { padding: 0 16px; grid-template-columns: 1fr 1fr; }
     .footer { padding: 10px 16px; }
@@ -1457,18 +1481,21 @@
 
     <div class="sidebar-nav">
       <div class="nav-section-title">Documentos</div>
-      <div class="nav-item active" onclick="showView('quote')">
+      <div class="nav-item active" data-nav="quote" onclick="showView('quote'); if (currentQuoteType !== 'quote') newQuote('quote');">
         <span class="nav-icon">&#9997;</span> Novo Orçamento
       </div>
-      <div class="nav-item" onclick="showView('history')">
+      <div class="nav-item" data-nav="report" onclick="showView('quote'); if (currentQuoteType !== 'report') newQuote('report');">
+        <span class="nav-icon">&#128221;</span> Orçamento c/ Relatório
+      </div>
+      <div class="nav-item" data-nav="history" onclick="showView('history')">
         <span class="nav-icon">&#128203;</span> Orçamentos
       </div>
 
       <div class="nav-section-title">Dados</div>
-      <div class="nav-item" onclick="showView('clients')">
+      <div class="nav-item" data-nav="clients" onclick="showView('clients')">
         <span class="nav-icon">&#128101;</span> Clientes
       </div>
-      <div class="nav-item" onclick="showView('catalog')">
+      <div class="nav-item" data-nav="catalog" onclick="showView('catalog')">
         <span class="nav-icon">&#128295;</span> Serviços / Artigos
       </div>
     </div>
@@ -1493,7 +1520,7 @@
     <div class="view active" id="view-quote">
       <div class="top-bar">
         <button class="hamburger no-print" onclick="toggleSidebar()" type="button">&#9776;</button>
-        <h2>Novo Orçamento</h2>
+        <h2 id="quoteViewTitle">Novo Orçamento</h2>
         <div class="top-bar-actions">
           <button class="btn" onclick="recalculate()">&#8635; Recalcular</button>
           <button class="btn btn-success" onclick="saveQuote()">&#10003; Guardar</button>
@@ -1517,7 +1544,7 @@
             </select>
           </div>
           <div class="separator"></div>
-          <button class="btn" onclick="newQuote()">&#10010; Novo Orçamento</button>
+          <button class="btn" id="toolbarNewBtn" onclick="newQuote(currentQuoteType)">&#10010; Novo Orçamento</button>
         </div>
 
         <!-- The printable page -->
@@ -1535,6 +1562,7 @@
             </div>
             <div class="header-right">
               <div class="doc-type">ORÇAMENTO</div>
+              <div class="doc-type-sub">E RELATÓRIO TÉCNICO</div>
               <div class="doc-number">N.o <span id="quoteNumber">ORC-2026-410</span></div>
             </div>
           </div>
@@ -1563,6 +1591,17 @@
               <div class="info-row"><span class="info-label">Prazo de execução</span><span class="info-value" contenteditable="true" id="quoteDeadline">A combinar</span></div>
               <div class="info-row"><span class="info-label">Pagamento</span><span class="info-value" contenteditable="true" id="quotePayment">Após conclusão</span></div>
             </div>
+          </div>
+
+          <div class="report-section" id="reportSection">
+            <div class="section-title" style="padding:0;margin-bottom:10px">
+              <h2>Relatório Técnico</h2>
+              <div class="line"></div>
+            </div>
+            <div class="report-field"><div class="report-label">Ocorrência / Avaria</div><div class="report-text" contenteditable="true" id="reportOccurrence" data-placeholder="Descreva a ocorrência ou avaria comunicada..."></div></div>
+            <div class="report-field"><div class="report-label">Danos verificados</div><div class="report-text" contenteditable="true" id="reportDamages" data-placeholder="Danos constatados no local..."></div></div>
+            <div class="report-field"><div class="report-label">Causa provável</div><div class="report-text" contenteditable="true" id="reportCause" data-placeholder="Causa provável da avaria/dano..."></div></div>
+            <div class="report-field"><div class="report-label">Reparação proposta</div><div class="report-text" contenteditable="true" id="reportRepair" data-placeholder="Trabalhos propostos para a reparação..."></div></div>
           </div>
 
           <div class="section-title">
@@ -1965,13 +2004,18 @@ document.getElementById('sidebarOverlay').addEventListener('click', closeSidebar
 // ===================== NAVIGATION =====================
 let currentView = 'quote';
 let editingQuoteId = null;
+let currentQuoteType = 'quote'; // 'quote' | 'report' (orçamento c/ relatório técnico p/ seguradora)
+
+function highlightNav() {
+  const key = currentView === 'quote' ? currentQuoteType : currentView;
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.nav === key));
+}
 
 function showView(view) {
   currentView = view;
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + view).classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.querySelectorAll('.nav-item')[['quote','history','clients','catalog'].indexOf(view)].classList.add('active');
+  highlightNav();
 
   if (view === 'history') renderQuotesList();
   if (view === 'clients') renderClientsList();
@@ -2189,7 +2233,43 @@ function renderCatalogList() {
 function getQuotes() { return DB.get('quotes', []); }
 function saveQuotes(list) { DB.set('quotes', list); }
 
-function newQuote() {
+// ===================== RELATÓRIO TÉCNICO =====================
+// Campos do relatório (chave no modelo, id no DOM, título no editor/PDF)
+const REPORT_FIELDS = [
+  { key: 'occurrence', id: 'reportOccurrence', label: 'Ocorrência / Avaria' },
+  { key: 'damages',    id: 'reportDamages',    label: 'Danos verificados' },
+  { key: 'cause',      id: 'reportCause',      label: 'Causa provável' },
+  { key: 'repair',     id: 'reportRepair',     label: 'Reparação proposta' }
+];
+
+function setQuoteMode(type) {
+  currentQuoteType = type === 'report' ? 'report' : 'quote';
+  const isReport = currentQuoteType === 'report';
+  document.body.classList.toggle('mode-report', isReport);
+  document.getElementById('quoteViewTitle').textContent = isReport ? 'Orçamento c/ Relatório' : 'Novo Orçamento';
+  document.getElementById('toolbarNewBtn').innerHTML = isReport ? '&#10010; Novo Orç. c/ Relatório' : '&#10010; Novo Orçamento';
+  highlightNav();
+}
+
+function readReportFromDom() {
+  const report = {};
+  REPORT_FIELDS.forEach(f => {
+    const el = document.getElementById(f.id);
+    report[f.key] = el ? (el.innerText || el.textContent || '').trim() : '';
+  });
+  return report;
+}
+
+function writeReportToDom(report) {
+  REPORT_FIELDS.forEach(f => {
+    const el = document.getElementById(f.id);
+    if (el) el.textContent = (report && report[f.key]) || '';
+  });
+}
+
+function newQuote(type) {
+  setQuoteMode(type);
+  writeReportToDom(null);
   editingQuoteId = null;
   const num = getNextNumber();
   document.getElementById('quoteNumber').textContent = formatQuoteNumber(num);
@@ -2258,6 +2338,8 @@ function collectQuoteData() {
     total: document.getElementById('grandTotal').textContent,
     conditions: Array.from(document.querySelectorAll('#conditionsCard .condition-text')).map(el => el.textContent),
     status: 'draft',
+    type: currentQuoteType,
+    report: currentQuoteType === 'report' ? readReportFromDom() : null,
   };
 }
 
@@ -2290,6 +2372,8 @@ function loadQuote(id) {
   if (!q) return;
 
   editingQuoteId = id;
+  setQuoteMode(q.type);
+  writeReportToDom(q.report);
   document.getElementById('quoteNumber').textContent = q.number;
   document.getElementById('quoteDate').textContent = q.date;
   document.getElementById('quoteValidUntil').textContent = q.validUntil;
@@ -2379,7 +2463,8 @@ function renderQuotesList() {
   const filtered = quotes.filter(q =>
     q.number.toLowerCase().includes(search) ||
     q.client.name.toLowerCase().includes(search) ||
-    (q.total || '').toLowerCase().includes(search)
+    (q.total || '').toLowerCase().includes(search) ||
+    (q.type === 'report' && search.length >= 3 && 'relatório relatorio seguradora'.includes(search))
   );
 
   const container = document.getElementById('quotesListContainer');
@@ -2394,7 +2479,7 @@ function renderQuotesList() {
   filtered.forEach(q => {
     const st = q.status || 'draft';
     html += `<tr>
-      <td><strong style="font-family:'JetBrains Mono',monospace;color:var(--blue-primary)">${esc(q.number)}</strong></td>
+      <td><strong style="font-family:'JetBrains Mono',monospace;color:var(--blue-primary)">${esc(q.number)}</strong>${q.type === 'report' ? '<span class="type-badge">c/ Relatório</span>' : ''}</td>
       <td>${esc(q.date)}</td>
       <td>${esc(q.client.name)}</td>
       <td style="font-family:'JetBrains Mono',monospace;font-weight:600">${esc(q.total)}</td>
@@ -2469,7 +2554,9 @@ function readQuoteFromDom() {
     deadline: txt('quoteDeadline'),
     payment: txt('quotePayment'),
     items,
-    conditions
+    conditions,
+    type: currentQuoteType,
+    report: currentQuoteType === 'report' ? readReportFromDom() : null
   };
 }
 
@@ -2663,8 +2750,10 @@ function buildQuoteDocDefinition(q) {
   // ----- Condições -----
   const conditionsBlock = q.conditions.length === 0 ? null : {
     unbreakable: true,
-    margin: [0, 8, 0, 0],
     stack: [
+      // Spacer em vez de margin: o pdfmake ignora a margem superior de um
+      // bloco unbreakable que cai no topo de página nova (título colava ao header)
+      { canvas: [{ type: 'rect', x: 0, y: 0, w: 1, h: 8, color: '#ffffff' }] },
       { text: 'CONDIÇÕES GERAIS', style: 'sectionTitle' },
       {
         table: {
@@ -2686,6 +2775,29 @@ function buildQuoteDocDefinition(q) {
           vLineWidth: () => 0
         }
       }
+    ]
+  };
+
+  // ----- Relatório técnico (só em orçamentos c/ relatório) -----
+  // Campos vazios são omitidos. Os títulos levam headlineLevel para o
+  // pageBreakBefore do documento nunca os deixar sozinhos no fim da página.
+  const isReport = q.type === 'report';
+  const reportFields = isReport
+    ? REPORT_FIELDS.filter(f => q.report && (q.report[f.key] || '').trim())
+    : [];
+  const reportBlock = reportFields.length === 0 ? null : {
+    margin: [0, 0, 0, 10],
+    stack: [
+      { text: 'RELATÓRIO TÉCNICO', style: 'sectionTitle', margin: [0, 4, 0, 6], headlineLevel: 1 },
+      ...reportFields.map((f, i) => ({
+        margin: [0, i === 0 ? 0 : 6, 0, 0],
+        stack: [
+          { text: f.label.toUpperCase(), fontSize: 8, bold: true, characterSpacing: 0.8, color: PDF_COLORS.bluePrimary, margin: [0, 0, 0, 3], headlineLevel: 2 },
+          ...q.report[f.key].trim().split(/\n+/).map(p => ({
+            text: p, fontSize: 9, color: PDF_COLORS.textDark, lineHeight: 1.3, margin: [8, 0, 0, 3]
+          }))
+        ]
+      }))
     ]
   };
 
@@ -2759,9 +2871,11 @@ function buildQuoteDocDefinition(q) {
   // ----- Documento -----
   return {
     pageSize: 'A4',
-    pageMargins: [32, 78, 32, 78],
+    // Com relatório, o texto corrido continua no topo da página seguinte —
+    // margem superior maior para não colar à banda azul do header
+    pageMargins: [32, isReport ? 90 : 78, 32, 78],
     info: {
-      title: 'Orçamento ' + q.number,
+      title: (isReport ? 'Orçamento e Relatório Técnico ' : 'Orçamento ') + q.number,
       author: 'LAVIMAX, LDA.',
       creator: 'LAVIMAX Orçamentos (Inforshine)'
     },
@@ -2770,6 +2884,9 @@ function buildQuoteDocDefinition(q) {
       color: PDF_COLORS.textBody,
       lineHeight: 1.15
     },
+    // Títulos do relatório nunca ficam órfãos no fundo da página
+    pageBreakBefore: (node, followingNodesOnPage) =>
+      !!node.headlineLevel && followingNodesOnPage.length === 0,
     styles: {
       th:        { color: PDF_COLORS.white, bold: true, fontSize: 8, characterSpacing: 0.5, margin: [4, 6, 4, 6] },
       thCenter:  { color: PDF_COLORS.white, bold: true, fontSize: 8, characterSpacing: 0.5, alignment: 'center', margin: [4, 6, 4, 6] },
@@ -2812,9 +2929,11 @@ function buildQuoteDocDefinition(q) {
                 width: 'auto',
                 alignment: 'right',
                 stack: [
-                  { text: 'ORÇAMENTO', color: PDF_COLORS.white, fontSize: 18, bold: true, characterSpacing: 2 },
-                  { text: 'N.º ' + q.number, color: '#bbd6f0', fontSize: 9, characterSpacing: 1, margin: [0, 2, 0, 0] }
-                ]
+                  { text: 'ORÇAMENTO', color: PDF_COLORS.white, fontSize: 18, bold: true, characterSpacing: 2, lineHeight: isReport ? 1 : 1.15 },
+                  // Linha extra comprimida (lineHeight 1) para a banda azul manter a altura
+                  isReport ? { text: 'E RELATÓRIO TÉCNICO', color: PDF_COLORS.white, fontSize: 7.5, bold: true, characterSpacing: 1.2, lineHeight: 1 } : null,
+                  { text: 'N.º ' + q.number, color: '#bbd6f0', fontSize: 9, characterSpacing: 1, margin: [0, isReport ? 1 : 2, 0, 0], lineHeight: isReport ? 1 : 1.15 }
+                ].filter(Boolean)
               }
             ]
           }]]
@@ -2863,6 +2982,9 @@ function buildQuoteDocDefinition(q) {
         ],
         margin: [0, 16, 0, 14]
       },
+
+      // Relatório técnico (null nos orçamentos normais → removido pelo filter)
+      reportBlock,
 
       // Título secção
       { text: 'DESCRIÇÃO DOS TRABALHOS', style: 'sectionTitle', margin: [0, 4, 0, 6] },
@@ -2940,14 +3062,18 @@ async function printQuote(id) {
   loadQuote(id);
   await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
   const quote = getQuotes().find(x => x.id === id);
-  const filename = ((quote && quote.number) ? quote.number : 'orcamento') + '.pdf';
+  const filename = ((quote && quote.number) ? quote.number : 'orcamento') + pdfSuffix();
   return generateQuotePdf(filename);
+}
+
+function pdfSuffix() {
+  return currentQuoteType === 'report' ? '_Relatorio.pdf' : '.pdf';
 }
 
 // Chamado pelo botão "Gerar PDF" da toolbar (orçamento corrente em edição)
 function printCurrentPage() {
   const num = document.getElementById('quoteNumber')?.textContent?.trim() || 'orcamento';
-  return generateQuotePdf(num + '.pdf');
+  return generateQuotePdf(num + pdfSuffix());
 }
 
 // ===================== CLIENT PICKER =====================
