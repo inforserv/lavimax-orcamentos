@@ -83,9 +83,37 @@ const cases = [
   ['test-rel-vazio-3-itens', quote(3, 'report', { occurrence: '', damages: '', cause: '', repair: '' })]
 ];
 
+// Caracteres sem glifo na Roboto saem como um quadrado no PDF (ex.: ↳ ☎ ✉).
+// Percorre todo o texto do docDefinition, incluindo header/footer, e falha se houver algum.
+const fontkit = require('@foliojs-fork/fontkit');
+const robotoFaces = ['Roboto-Regular.ttf', 'Roboto-Medium.ttf', 'Roboto-Italic.ttf', 'Roboto-MediumItalic.ttf']
+  .map(n => fontkit.openSync(f(n)));
+function missingGlyphs(node, found = new Set()) {
+  if (typeof node === 'function') node = node(1, 2, { width: 595.28, height: 841.89 });
+  if (typeof node === 'string') {
+    for (const ch of node) {
+      if (ch === '\n' || ch === '\t') continue;
+      if (!robotoFaces.every(face => face.hasGlyphForCodePoint(ch.codePointAt(0)))) found.add(ch);
+    }
+  } else if (Array.isArray(node)) {
+    node.forEach(n => missingGlyphs(n, found));
+  } else if (node && typeof node === 'object') {
+    for (const k of ['text', 'stack', 'columns', 'table', 'body', 'ul', 'ol', 'content', 'header', 'footer']) {
+      if (k in node) missingGlyphs(node[k], found);
+    }
+  }
+  return found;
+}
+
 (async () => {
   for (const [name, q] of cases) {
-    const doc = printer.createPdfKitDocument(lib.buildQuoteDocDefinition(q));
+    const docDef = lib.buildQuoteDocDefinition(q);
+    const missing = missingGlyphs(docDef);
+    if (missing.size) {
+      const list = [...missing].map(c => `'${c}' (U+${c.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')})`).join(', ');
+      throw new Error(`${name}: caracteres sem glifo na Roboto (saem como quadrado no PDF): ${list}`);
+    }
+    const doc = printer.createPdfKitDocument(docDef);
     const outDir = process.env.OUT || path.join(__dirname, 'out');
     fs.mkdirSync(outDir, { recursive: true });
     const out = path.join(outDir, name + '.pdf');
