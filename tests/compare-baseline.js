@@ -3,7 +3,7 @@
 // tests/out/baseline/, salvo se BASELINE apontar para outra pasta.
 // Renderiza com pdftoppm (PGM em tons de cinza), conta píxeis diferentes e
 // exporta PNGs das páginas alteradas (e da baseline) para revisão visual.
-// Uso: node compare-baseline.js [limiar%]   (por omissão 0.05%)
+// Uso: node compare-baseline.js [limiar%]   (por omissão 0 — a renderização é determinística, qualquer píxel diferente conta)
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
@@ -12,11 +12,11 @@ const OUT = process.env.OUT || path.join(__dirname, 'out');
 const BASE = process.env.BASELINE || path.join(OUT, 'baseline');
 if (!process.env.BASELINE) {
   execFileSync(process.execPath, [path.join(__dirname, 'run-test.js')], {
-    env: { ...process.env, SRC: path.join(__dirname, '..', 'index.html'), OUT: BASE }, stdio: 'ignore'
+    env: { ...process.env, SRC: path.join(__dirname, '..', 'index.html'), OUT: BASE, SKIP_GLYPH_CHECK: '1' }, stdio: 'ignore'
   });
 }
 const PNG = path.join(OUT, 'png');
-const THRESHOLD = parseFloat(process.argv[2] || '0.05');
+const THRESHOLD = parseFloat(process.argv[2] || '0');
 const DPI = '50';
 
 function which(bin) {

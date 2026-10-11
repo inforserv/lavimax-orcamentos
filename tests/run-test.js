@@ -80,7 +80,9 @@ const cases = [
   ['test-rel-curto-5-itens', quote(5, 'report', SHORT)],
   ['test-rel-longo-15-itens', quote(15, 'report', LONG)],
   ['test-rel-parcial-3-itens', quote(3, 'report', PARTIAL)],
-  ['test-rel-vazio-3-itens', quote(3, 'report', { occurrence: '', damages: '', cause: '', repair: '' })]
+  ['test-rel-vazio-3-itens', quote(3, 'report', { occurrence: '', damages: '', cause: '', repair: '' })],
+  // linha de detalhe sem item antes (orphanDetail)
+  ['test-detalhe-orfao', { ...quote(2, 'quote', null), items: [{ detail: true, text: 'Nota sem item associado' }, ...sampleItems(2)] }]
 ];
 
 // Caracteres sem glifo na Roboto saem como um quadrado no PDF (ex.: ↳ ☎ ✉).
@@ -108,7 +110,8 @@ function missingGlyphs(node, found = new Set()) {
 (async () => {
   for (const [name, q] of cases) {
     const docDef = lib.buildQuoteDocDefinition(q);
-    const missing = missingGlyphs(docDef);
+    // SKIP_GLYPH_CHECK: só para gerar a baseline de uma versão publicada que ainda tenha o defeito
+    const missing = process.env.SKIP_GLYPH_CHECK ? new Set() : missingGlyphs(docDef);
     if (missing.size) {
       const list = [...missing].map(c => `'${c}' (U+${c.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')})`).join(', ');
       throw new Error(`${name}: caracteres sem glifo na Roboto (saem como quadrado no PDF): ${list}`);
