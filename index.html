@@ -2623,7 +2623,7 @@ function buildQuoteDocDefinition(q) {
   groups.forEach(g => {
     if (g.orphanDetail !== undefined) {
       itemRows.push([
-        { text: '↳ ' + g.orphanDetail, italics: true, color: PDF_COLORS.textMuted, fontSize: 8, colSpan: 6, margin: [16, 2, 4, 2] },
+        { text: '– ' + g.orphanDetail, italics: true, color: PDF_COLORS.textMuted, fontSize: 8, colSpan: 6, margin: [16, 2, 4, 2] },
         {}, {}, {}, {}, {}
       ]);
       return;
@@ -2632,7 +2632,7 @@ function buildQuoteDocDefinition(q) {
     visibleIndex++;
     const descStack = [{ text: it.desc || '', color: it.included ? PDF_COLORS.textBody : PDF_COLORS.textDark, italics: !!it.included }];
     (g.details || []).forEach(d => {
-      descStack.push({ text: '↳ ' + d, italics: true, color: PDF_COLORS.textMuted, fontSize: 8, margin: [10, 2, 0, 0] });
+      descStack.push({ text: '– ' + d, italics: true, color: PDF_COLORS.textMuted, fontSize: 8, margin: [10, 2, 0, 0] });
     });
     if (it.included) {
       const inclText = (it.desc || '').toLowerCase().includes('deslocaç') ? 'Incluídas' : 'Incluída';
