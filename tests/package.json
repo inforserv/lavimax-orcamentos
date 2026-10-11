@@ -1,0 +1,15 @@
+{
+  "name": "lavimax-orcamentos-tests",
+  "version": "1.0.0",
+  "description": "Testes do PDF (pdfmake) e da UI (jsdom) da PWA LAVIMAX",
+  "scripts": {
+    "test": "node run-test.js && node ui-test.js"
+  },
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "jsdom": "^29.1.1",
+    "pdfmake": "^0.2.10"
+  },
+  "private": true
+}

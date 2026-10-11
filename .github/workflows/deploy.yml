@@ -22,9 +22,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      - name: Preparar site (só os ficheiros da app, sem tests/)
+        run: |
+          mkdir _site
+          cp index.html sw.js manifest.json favicon.ico apple-touch-icon.png icon-192.png icon-512.png _site/
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: '_site'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
